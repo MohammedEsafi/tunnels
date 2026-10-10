@@ -159,7 +159,14 @@ final class AppModel {
         }
     }
 
-    func removeAdHoc(_ forward: Forward) {
+    /// The × on a row: close it and forget it. For a favourite that also
+    /// removes it from the file.
+    func removeForward(_ forward: Forward) {
+        reconnector.cancel(forward.spec.machine)
+        if forward.isFavourite {
+            try? Favourites.remove(forward.spec, from: favouritesURL)
+            reloadFavourites()
+        }
         Task { await controller.remove(id: forward.id) }
     }
 

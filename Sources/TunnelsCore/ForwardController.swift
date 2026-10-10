@@ -26,9 +26,11 @@ public final class ForwardController {
 
     // MARK: Reading state
 
-    /// Machine aliases in display order.
+    /// Machine aliases in display order: those with forwards, plus any that
+    /// still have a live or failing master.
     public var machines: [String] {
-        Array(Set(forwards.map(\.spec.machine)).union(machineStates.keys)).sorted()
+        let live = machineStates.filter { $0.value != .disconnected }.map(\.key)
+        return Array(Set(forwards.map(\.spec.machine)).union(live)).sorted()
     }
 
     public func forwards(on alias: String) -> [Forward] {

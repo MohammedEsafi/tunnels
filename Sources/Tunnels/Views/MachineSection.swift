@@ -68,7 +68,7 @@ struct MachineSection: View {
     private func statusText(now: Date) -> String {
         switch state {
         case .disconnected:
-            return forwards.isEmpty ? "Outside the app" : ""
+            return ""
         case .connecting:
             return "Connecting…"
         case .connected:
@@ -99,7 +99,7 @@ struct ExternalRow: View {
                 .font(.system(size: 13))
                 .monospacedDigit()
             if hovering {
-                Text("Outside the app · pid \(String(forward.pid))")
+                Text("Started outside Tunnels · pid \(String(forward.pid))")
                     .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 4)

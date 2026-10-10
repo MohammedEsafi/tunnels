@@ -138,6 +138,7 @@ final class ForwardControllerTests: XCTestCase {
         await controller.remove(id: id)
         XCTAssertEqual(controller.forwards.count, 2)
         XCTAssertEqual(controller.machineState("dev-box"), .disconnected)
+        XCTAssertFalse(controller.machines.contains("dev-box"))
     }
 
     func testRunningForwardSurvivesLosingFavouriteStatus() async {
