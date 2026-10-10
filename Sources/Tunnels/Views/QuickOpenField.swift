@@ -121,9 +121,6 @@ private struct SuggestionRow: View {
                 Text("Favourite").foregroundStyle(secondary).font(.system(size: 11))
             case .host(let host):
                 Text(host.name)
-                if host.online == false {
-                    Text("offline").foregroundStyle(secondary).font(.system(size: 11))
-                }
                 Spacer()
                 Text(host.source == .tailscale ? "Tailscale" : "SSH config").foregroundStyle(secondary).font(.system(size: 11))
             case .spec(let spec):
@@ -141,7 +138,14 @@ private struct SuggestionRow: View {
         .frame(height: 24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(highlighted ? Color.accentColor : .clear))
+        .opacity(dimmed ? 0.45 : 1)
         .contentShape(Rectangle())
+    }
+
+    /// A Tailscale peer that is down: still selectable, just quiet.
+    private var dimmed: Bool {
+        if case .host(let host) = suggestion { return host.online == false }
+        return false
     }
 
     private var secondary: Color {

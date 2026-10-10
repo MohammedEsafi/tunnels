@@ -6,7 +6,6 @@ import TunnelsCore
 struct MachineSection: View {
     @Environment(AppModel.self) private var model
     let alias: String
-    @State private var hovering = false
 
     private var forwards: [Forward] { model.controller.forwards(on: alias) }
     private var external: [ExternalForward] { model.external(on: alias) }
@@ -30,14 +29,8 @@ struct MachineSection: View {
             Text(alias).font(.system(size: 13, weight: .bold)).lineLimit(1)
             if inTrouble {
                 Circle().fill(Color.orange).frame(width: 7, height: 7)
-            }
-            if hovering {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    Text(statusText(now: context.date))
-                        .font(.system(size: 11))
-                        .foregroundStyle(inTrouble ? Color.orange : Color.secondary)
-                        .lineLimit(1)
-                }
+                    .help(reason)
+                    .accessibilityLabel(reason)
             }
             Spacer(minLength: 4)
             if !forwards.isEmpty {
@@ -54,8 +47,6 @@ struct MachineSection: View {
         .padding(.horizontal, 10)
         .frame(height: 30)
         .padding(.top, 4)
-        .contentShape(Rectangle())
-        .onHover { hovering = $0 }
     }
 
     private var inTrouble: Bool {
@@ -65,22 +56,12 @@ struct MachineSection: View {
         }
     }
 
-    private func statusText(now: Date) -> String {
+    /// Tooltip on the orange dot; the only place the words live.
+    private var reason: String {
         switch state {
-        case .disconnected:
-            return ""
-        case .connecting:
-            return "Connecting…"
-        case .connected:
-            return "Connected"
-        case .dropped(let attempt):
-            if let next = model.reconnector.nextAttempt[alias] {
-                let seconds = max(0, Int(next.timeIntervalSince(now).rounded(.up)))
-                return "Retry in \(seconds) s · \(attempt)"
-            }
-            return "Reconnecting…"
-        case .failed(let reason):
-            return SSHErrorText.short(reason)
+        case .dropped: return "Connection dropped, retrying"
+        case .failed(let text): return SSHErrorText.short(text)
+        default: return ""
         }
     }
 }
