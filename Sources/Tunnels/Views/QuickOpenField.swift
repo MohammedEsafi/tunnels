@@ -5,7 +5,8 @@ import TunnelsCore
 /// drawn as a vibrant rounded field like the search fields in system menus.
 struct QuickOpenField: View {
     @Environment(AppModel.self) private var model
-    @State private var highlighted = 0
+    /// -1 = nothing highlighted; the empty-field list is a menu, not a selection.
+    @State private var highlighted = -1
     @FocusState private var focused: Bool
 
     private var text: String {
@@ -32,7 +33,7 @@ struct QuickOpenField: View {
                     .onKeyPress(.downArrow) { move(1); return .handled }
                     .onKeyPress(.upArrow) { move(-1); return .handled }
                     .onChange(of: model.quickOpenText) { _, next in
-                        highlighted = 0
+                        highlighted = next.trimmingCharacters(in: .whitespaces).isEmpty ? -1 : 0
                         if next.hasSuffix(":") { focused = true }
                     }
                 if !text.isEmpty {
@@ -73,12 +74,16 @@ struct QuickOpenField: View {
 
     private func move(_ delta: Int) {
         guard !suggestions.isEmpty else { return }
-        highlighted = (highlighted + delta + suggestions.count) % suggestions.count
+        if highlighted < 0 {
+            highlighted = delta > 0 ? 0 : suggestions.count - 1
+        } else {
+            highlighted = (highlighted + delta + suggestions.count) % suggestions.count
+        }
     }
 
     private func submit() {
         let list = suggestions
-        if !list.isEmpty, highlighted < list.count {
+        if !list.isEmpty, highlighted >= 0, highlighted < list.count {
             choose(list[highlighted])
         } else if let spec = QuickOpen.parse(text) {
             model.open(spec)
