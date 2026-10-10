@@ -2,13 +2,13 @@ import Foundation
 
 public enum Suggestion: Equatable, Hashable, Identifiable {
     case favourite(Favourite)
-    case host(String)
+    case host(HostEntry)
     case spec(ForwardSpec)
 
     public var id: String {
         switch self {
         case .favourite(let f): return "fav:" + f.spec.sshArgument + "@" + f.spec.machine
-        case .host(let h): return "host:" + h
+        case .host(let h): return "host:" + h.id
         case .spec(let s): return "spec:" + s.sshArgument + "@" + s.machine
         }
     }
@@ -40,9 +40,15 @@ public enum QuickOpen {
         }
     }
 
-    public static func suggestions(for input: String, favourites: [Favourite], hosts: [String], limit: Int = 6) -> [Suggestion] {
+    /// With empty input: every favourite then every host, so a focused empty
+    /// field doubles as a list of what you can open.
+    public static func suggestions(for input: String, favourites: [Favourite], hosts: [HostEntry], limit: Int = 6) -> [Suggestion] {
         let text = input.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return [] }
+        if text.isEmpty {
+            var all: [Suggestion] = favourites.map { .favourite($0) }
+            for host in hosts where !all.contains(.host(host)) { all.append(.host(host)) }
+            return Array(all.prefix(limit))
+        }
         var result: [Suggestion] = []
 
         if let spec = parse(text) {
@@ -64,12 +70,12 @@ public enum QuickOpen {
         for favourite in ranked { result.append(.favourite(favourite)) }
 
         if !text.contains(":") {
-            let matchingHosts = hosts.filter { $0.lowercased().contains(needle) }
+            let matchingHosts = hosts.filter { $0.name.lowercased().contains(needle) }
                 .sorted { a, b in
-                    let aPrefix = a.lowercased().hasPrefix(needle)
-                    let bPrefix = b.lowercased().hasPrefix(needle)
+                    let aPrefix = a.name.lowercased().hasPrefix(needle)
+                    let bPrefix = b.name.lowercased().hasPrefix(needle)
                     if aPrefix != bPrefix { return aPrefix }
-                    return a < b
+                    return a.name < b.name
                 }
             for host in matchingHosts where !result.contains(.host(host)) {
                 result.append(.host(host))
