@@ -25,8 +25,37 @@ final class AppModel {
     var popoverVisible = false {
         didSet {
             popoverVisible ? startExternalScanning() : stopExternalScanning()
-            if !popoverVisible { quickOpenVisible = false; quickOpenText = "" }
+            if !popoverVisible { quickOpenVisible = false; quickOpenText = ""; menuPage = .main }
         }
+    }
+
+    /// Settings live on pages inside the menu, like Control Center sub-pages.
+    enum MenuPage { case main, settings, pinned, logs }
+    var menuPage: MenuPage = .main
+
+    /// One notification when a machine gives up reconnecting.
+    var notifyOnGiveUp: Bool = UserDefaults.standard.object(forKey: "notifyOnGiveUp") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(notifyOnGiveUp, forKey: "notifyOnGiveUp") }
+    }
+
+    var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+    }
+
+    func rename(_ favourite: Favourite, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != favourite.name else { return }
+        do {
+            try Favourites.rename(favourite.spec, to: trimmed, in: favouritesURL)
+            reloadFavourites()
+        } catch {
+            favouritesProblems = [error.localizedDescription]
+        }
+    }
+
+    func unpin(_ favourite: Favourite) {
+        try? Favourites.remove(favourite.spec, from: favouritesURL)
+        reloadFavourites()
     }
 
     /// The host:port field is hidden behind the + button until asked for.
@@ -68,7 +97,8 @@ final class AppModel {
         reconnector = Reconnector(controller: controller)
         favouritesURL = Favourites.defaultURL
 
-        reconnector.onGaveUp = { alias, reason in
+        reconnector.onGaveUp = { [weak self] alias, reason in
+            guard self?.notifyOnGiveUp ?? true else { return }
             Notifier.post(title: "\(alias) is down", body: "\(reason). Open Tunnels to retry.")
         }
 

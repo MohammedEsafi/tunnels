@@ -13,6 +13,30 @@ struct PopoverView: View {
     }
 
     var body: some View {
+        Group {
+            switch model.menuPage {
+            case .main: mainPage
+            case .settings: SettingsPage()
+            case .pinned: PinnedPage()
+            case .logs: LogsPage()
+            }
+        }
+        .padding(6)
+        .font(.system(size: 13))
+        // Menus do not draw keyboard focus rings; the field takes focus itself.
+        .focusEffectDisabled()
+        .animation(.easeInOut(duration: 0.18), value: pageIndex)
+    }
+
+    private var pageIndex: Int {
+        switch model.menuPage {
+        case .main: return 0
+        case .settings: return 1
+        case .pinned, .logs: return 2
+        }
+    }
+
+    private var mainPage: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             if showsQuickOpen {
@@ -44,15 +68,12 @@ struct PopoverView: View {
             MenuSeparator()
             MenuRow("Close All", enabled: model.controller.anyDesired) { model.closeAll() }
             MenuSeparator()
-            MenuRow("Settings…") { SettingsWindow.shared.show(model: model) }
+            MenuRow("Settings…") { model.menuPage = .settings }
                 .keyboardShortcut(",")
             MenuRow("Quit") { NSApp.terminate(nil) }
                 .keyboardShortcut("q")
         }
-        .padding(6)
-        .font(.system(size: 13))
-        // Menus do not draw keyboard focus rings; the field takes focus itself.
-        .focusEffectDisabled()
+        .transition(.asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .leading)))
     }
 
     private var header: some View {
