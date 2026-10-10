@@ -77,8 +77,8 @@ Problems in the file are shown at the top of the popover with an Open button.
 - **States.** Blue circle: active. Spinner: opening. Orange circle with ↻:
   dropped, click it to retry the machine now. Red circle with ↻: that one
   forward failed while the connection is fine, click to try again. Grey: not
-  running. No words on the rows: the reason is the tooltip on the orange dot
-  or the retry circle, and the full ssh output is in Connection Logs.
+  running. No words on the rows: the reason is the tooltip on the retry
+  circle, and the full ssh output is in Connection Logs.
 - **Pinning.** Hover a forward and click the pin to keep it for next time
   (it goes into the favourites file); click the filled pin to unpin. The ×
   closes the forward, and unpins it if it was pinned. The file itself is only

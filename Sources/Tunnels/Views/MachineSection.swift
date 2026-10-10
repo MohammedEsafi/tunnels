@@ -27,11 +27,6 @@ struct MachineSection: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text(alias).font(.system(size: 13, weight: .bold)).lineLimit(1)
-            if inTrouble {
-                Circle().fill(Color.orange).frame(width: 7, height: 7)
-                    .help(reason)
-                    .accessibilityLabel(reason)
-            }
             Spacer(minLength: 4)
             if !forwards.isEmpty {
                 Toggle("", isOn: Binding(
@@ -49,21 +44,6 @@ struct MachineSection: View {
         .padding(.top, 4)
     }
 
-    private var inTrouble: Bool {
-        switch state {
-        case .dropped, .failed: return true
-        default: return false
-        }
-    }
-
-    /// Tooltip on the orange dot; the only place the words live.
-    private var reason: String {
-        switch state {
-        case .dropped: return "Connection dropped, retrying"
-        case .failed(let text): return SSHErrorText.short(text)
-        default: return ""
-        }
-    }
 }
 
 struct ExternalRow: View {
