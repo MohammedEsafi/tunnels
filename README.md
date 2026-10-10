@@ -38,7 +38,7 @@ want "Start at login" to keep working after you move the build folder.
 
 ## Favourites
 
-Pins in the menu write to `~/.config/tunnels/favourites.toml` (or
+Opening a forward writes to `~/.config/tunnels/favourites.toml` (or
 `$XDG_CONFIG_HOME/tunnels/favourites.toml`), so you never have to open the file.
 It is plain TOML if you want to keep it in your dotfiles, rename entries, or add
 them by hand; the app reloads it whenever it changes.
@@ -68,29 +68,29 @@ Problems in the file are shown at the top of the popover with an Open button.
   only when the remote port differs. Click it to copy `localhost:<port>`.
 - **Adding.** The + button (or ⌘N) shows the field. With the field empty it
   lists your favourites and machines: Host aliases from `~/.ssh/config` plus
-  Tailscale peers when the `tailscale` CLI is installed (offline ones say so).
+  Tailscale peers when the `tailscale` CLI is installed (offline ones are dimmed).
   Type `host:port`,
   `host:local:remote`, or `host:local:remoteHost:remote` and press Return.
   Typing part of a favourite name or a Host alias shows suggestions; arrow
   keys and Return pick one. Ad-hoc forwards appear under their machine and
   can be removed with the × that shows on hover.
-- **States.** Blue circle: active. Orange circle with ↻: dropped, click it to
-  retry the machine now instead of waiting for the next automatic attempt.
-  Red circle with ↻: that one forward failed while the connection is fine,
-  click to try it again. Grey: not running. Hover a machine row for the
-  reason or the retry countdown.
+- **States.** Blue circle: active. Spinner: opening. Orange circle with ↻:
+  dropped, click it to retry the machine now. Red circle with ↻: that one
+  forward failed while the connection is fine, click to try again. Grey: not
+  running. No words on the rows: the reason is the tooltip on the orange dot
+  or the retry circle, and the full ssh output is in Connection Logs.
 - **Pinning.** Hover a forward and click the pin to keep it for next time
   (it goes into the favourites file); click the filled pin to unpin. The ×
   closes the forward, and unpins it if it was pinned. The file itself is only
   only needed for hand edits; renaming is done on the Pinned Forwards page.
 - **First run.** The menu shows just the field. Type `host:port` and press
-  Return; pin it if you want it back next time.
+  Return. It is remembered until you × it.
 - **Started outside Tunnels.** `ssh -L` processes you started in a terminal
   show under their machine with a terminal icon; hover for Stop. They are
   never adopted.
 - **Close All** and **Settings…** are at the bottom. Settings is a page
   inside the menu, like Control Center's sub-pages: open at login, the
-  give-up notification, a Pinned Forwards page where you rename or unpin in
+  give-up notification, a Forwards page where you rename or forget in
   place, links to the favourites file and SSH config, and per-machine
   connection logs. The ‹ chevron or ⌘← goes back. Escape or a click outside
   closes the menu; ⌘Q quits.

@@ -20,6 +20,11 @@ struct ForwardRow: View {
                 .buttonStyle(.plain)
                 .help(retryHelp)
                 .accessibilityLabel(retryHelp)
+            } else if forward.state == .pending {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 22, height: 22)
+                    .accessibilityLabel("Opening")
             } else {
                 RowIcon(symbol: symbol, tint: tint)
             }
@@ -32,9 +37,6 @@ struct ForwardRow: View {
                         .monospacedDigit()
                         .foregroundStyle(forward.state == .off ? Color.primary.opacity(0.75) : .primary)
                         .lineLimit(1)
-                    if hovering, let status {
-                        Text(status).font(.system(size: 11)).foregroundStyle(statusColor).lineLimit(1)
-                    }
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
@@ -44,22 +46,12 @@ struct ForwardRow: View {
 
             if hovering {
                 Button {
-                    model.toggleFavourite(forward)
-                } label: {
-                    Image(systemName: forward.isFavourite ? "pin.fill" : "pin")
-                        .font(.system(size: 12))
-                        .foregroundStyle(forward.isFavourite ? Color.accentColor : Color.secondary)
-                }
-                .buttonStyle(.plain)
-                .help(forward.isFavourite ? "Unpin: forget it next time" : "Pin: keep it for next time")
-                .accessibilityLabel(forward.isFavourite ? "Unpin \(forward.name)" : "Pin \(forward.name)")
-                Button {
                     model.removeForward(forward)
                 } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help(forward.isFavourite ? "Close and unpin" : "Close")
+                .help("Close and forget")
                 .accessibilityLabel("Remove \(forward.name)")
             }
             if !portIsName || forward.spec.localPort != forward.spec.remotePort {
@@ -98,7 +90,6 @@ struct ForwardRow: View {
     private var symbol: String {
         switch forward.state {
         case .error: return "exclamationmark"
-        case .pending: return "ellipsis"
         default: return "arrow.left.arrow.right"
         }
     }
@@ -112,20 +103,4 @@ struct ForwardRow: View {
         }
     }
 
-    private var status: String? {
-        switch forward.state {
-        case .pending: return "Opening…"
-        case .dropped: return "Dropped"
-        case .error(let text): return SSHErrorText.short(text)
-        case .active, .off: return nil
-        }
-    }
-
-    private var statusColor: Color {
-        switch forward.state {
-        case .error: return .red
-        case .dropped: return .orange
-        default: return .secondary
-        }
-    }
 }

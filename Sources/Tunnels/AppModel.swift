@@ -56,9 +56,14 @@ final class AppModel {
         }
     }
 
-    func unpin(_ favourite: Favourite) {
-        try? Favourites.remove(favourite.spec, from: favouritesURL)
-        reloadFavourites()
+    /// Forget from the Forwards page: closes it too if it is open.
+    func forget(_ favourite: Favourite) {
+        if let forward = controller.forwards.first(where: { $0.spec == favourite.spec }) {
+            removeForward(forward)
+        } else {
+            try? Favourites.remove(favourite.spec, from: favouritesURL)
+            reloadFavourites()
+        }
     }
 
     /// The host:port field is hidden behind the + button until asked for.
@@ -173,8 +178,18 @@ final class AppModel {
         }
     }
 
+    /// Open and remember. Anything opened from the field goes straight into
+    /// the favourites file, so it is back next time; × forgets it.
     func open(_ spec: ForwardSpec) {
-        Task { await controller.addAdHoc(spec) }
+        Task {
+            await controller.addAdHoc(spec)
+            if !favourites.contains(where: { $0.spec == spec }) {
+                let name = spec.remoteHost == "localhost" || spec.remoteHost == "127.0.0.1"
+                    ? String(spec.remotePort) : "\(spec.remoteHost):\(spec.remotePort)"
+                try? Favourites.add(Favourite(name: name, spec: spec), to: favouritesURL)
+                reloadFavourites()
+            }
+        }
     }
 
     func setForward(_ forward: Forward, on: Bool) {
@@ -191,29 +206,11 @@ final class AppModel {
         reconnector.retryNow(alias)
     }
 
-    /// Star / unstar from the row. Writes the favourites file; the watcher
-    /// reloads it and the row keeps its state either way.
-    func toggleFavourite(_ forward: Forward) {
-        do {
-            if forward.isFavourite {
-                try Favourites.remove(forward.spec, from: favouritesURL)
-            } else {
-                try Favourites.add(Favourite(name: forward.name, spec: forward.spec), to: favouritesURL)
-            }
-            reloadFavourites()
-        } catch {
-            favouritesProblems = [error.localizedDescription]
-        }
-    }
-
-    /// The × on a row: close it and forget it. For a favourite that also
-    /// removes it from the file.
+    /// The × on a row: close it and forget it.
     func removeForward(_ forward: Forward) {
         reconnector.cancel(forward.spec.machine)
-        if forward.isFavourite {
-            try? Favourites.remove(forward.spec, from: favouritesURL)
-            reloadFavourites()
-        }
+        try? Favourites.remove(forward.spec, from: favouritesURL)
+        reloadFavourites()
         Task { await controller.remove(id: forward.id) }
     }
 

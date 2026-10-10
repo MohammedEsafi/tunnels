@@ -106,7 +106,7 @@ struct SettingsPage: View {
             ToggleRow(title: "Notify when a connection gives up", isOn: $model.notifyOnGiveUp)
 
             MenuSeparator()
-            LinkRow(title: "Pinned Forwards", detail: model.favourites.isEmpty ? nil : "\(model.favourites.count)") { model.menuPage = .pinned }
+            LinkRow(title: "Forwards", detail: model.favourites.isEmpty ? nil : "\(model.favourites.count)") { model.menuPage = .pinned }
             LinkRow(title: "Favourites File", external: true) { model.openFavouritesFile() }
             LinkRow(title: "SSH Config", external: true) { model.openSSHConfig() }
             LinkRow(title: "Connection Logs", detail: model.controller.logs.isEmpty ? nil : "\(model.controller.logs.count)") { model.menuPage = .logs }
@@ -124,16 +124,16 @@ struct SettingsPage: View {
     }
 }
 
-/// Pinned forwards with inline rename. × unpins.
+/// Every remembered forward, with inline rename. × forgets.
 struct PinnedPage: View {
     @Environment(AppModel.self) private var model
     @State private var listHeight: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PageHeader(title: "Pinned Forwards", back: .settings)
+            PageHeader(title: "Forwards", back: .settings)
             if model.favourites.isEmpty {
-                Text("Nothing pinned yet. Hover a forward in the menu and click the pin.")
+                Text("Nothing yet. Forwards you open are remembered here.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                     .padding(.horizontal, 10).padding(.vertical, 8)
             }
@@ -207,13 +207,13 @@ private struct PinnedRow: View {
             Spacer()
             if hovering && !editing {
                 Button {
-                    model.unpin(favourite)
+                    model.forget(favourite)
                 } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Unpin")
-                .accessibilityLabel("Unpin \(favourite.name)")
+                .help("Forget")
+                .accessibilityLabel("Forget \(favourite.name)")
             }
         }
         .padding(.horizontal, 10)
