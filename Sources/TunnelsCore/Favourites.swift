@@ -179,6 +179,41 @@ public extension Favourites {
         return false
     }
 
+    /// Change the name of the [[favourite]] block matching host and port,
+    /// touching no other line.
+    @discardableResult
+    static func rename(_ spec: ForwardSpec, to name: String, in url: URL = defaultURL) throws -> Bool {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        var lines = text.components(separatedBy: "\n")
+        var blocks: [Range<Int>] = []
+        var start: Int?
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") {
+                if let s = start { blocks.append(s..<index) }
+                start = trimmed.hasPrefix("[[favourite]]") ? index : nil
+            }
+        }
+        if let s = start { blocks.append(s..<lines.count) }
+
+        for block in blocks {
+            let blockText = lines[block].joined(separator: "\n")
+            guard let parsed = try? MiniTOML.parse(blockText),
+                  let table = parsed["favourite"]?.tables?.first,
+                  table["host"]?.string == spec.machine,
+                  table["port"]?.integer == spec.localPort else { continue }
+            let nameLine = "name = \"\(escape(name))\""
+            if let existing = lines[block].firstIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("name") }) {
+                lines[existing] = nameLine
+            } else {
+                lines.insert(nameLine, at: block.lowerBound + 1)
+            }
+            try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+            return true
+        }
+        return false
+    }
+
     private static func escape(_ text: String) -> String {
         text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
     }

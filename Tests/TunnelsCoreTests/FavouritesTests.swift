@@ -133,6 +133,30 @@ final class FavouritesTests: XCTestCase {
         XCTAssertFalse(try Favourites.remove(ForwardSpec(machine: "nope", localPort: 1), from: url))
     }
 
+    func testRenameKeepsEverythingElse() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("favourites.toml")
+        try """
+        [[favourite]]
+        host = "echo"   # no name yet
+        port = 4040
+
+        [[favourite]]
+        name = "postgres"
+        host = "prod"
+        port = 5432
+        """.write(to: url, atomically: true, encoding: .utf8)
+
+        XCTAssertTrue(try Favourites.rename(ForwardSpec(machine: "echo", localPort: 4040), to: "echo api", in: url))
+        XCTAssertTrue(try Favourites.rename(ForwardSpec(machine: "prod", localPort: 5432), to: "pg \"main\"", in: url))
+        let loaded = try Favourites.load(from: url)
+        XCTAssertEqual(loaded.map(\.name), ["echo api", "pg \"main\""])
+        XCTAssertTrue(try String(contentsOf: url, encoding: .utf8).contains("# no name yet"))
+        XCTAssertFalse(try Favourites.rename(ForwardSpec(machine: "nope", localPort: 1), to: "x", in: url))
+    }
+
     func testAddCreatesFileWithTemplate() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

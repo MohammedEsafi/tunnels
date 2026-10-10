@@ -78,15 +78,18 @@ Problems in the file are shown at the top of the popover with an Open button.
 - **Pinning.** Hover a forward and click the pin to keep it for next time
   (it goes into the favourites file); click the filled pin to unpin. The ×
   closes the forward, and unpins it if it was pinned. The file itself is only
-  needed for renaming or hand edits; Settings… opens it.
+  only needed for hand edits; renaming is done on the Pinned Forwards page.
 - **First run.** The menu shows just the field. Type `host:port` and press
   Return; pin it if you want it back next time.
 - **Started outside Tunnels.** `ssh -L` processes you started in a terminal
   show under their machine with a terminal icon; hover for Stop. They are
   never adopted.
-- **Close All** and **Settings…** (start at login, the favourites file,
-  per-machine ssh logs) are at the bottom. Escape or a click outside closes
-  the menu; ⌘Q quits.
+- **Close All** and **Settings…** are at the bottom. Settings is a page
+  inside the menu, like Control Center's sub-pages: open at login, the
+  give-up notification, a Pinned Forwards page where you rename or unpin in
+  place, links to the favourites file and SSH config, and per-machine
+  connection logs. The ‹ chevron or ⌘← goes back. Escape or a click outside
+  closes the menu; ⌘Q quits.
 
 ## How reconnection works
 

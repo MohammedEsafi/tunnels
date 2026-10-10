@@ -23,15 +23,14 @@ enum DebugSnapshot {
             let model = AppModel.shared
             DebugLog.log("snapshot: forwards=\(model.controller.forwards.count) machines=\(model.controller.machines) external=\(model.external.count) states=\(model.controller.machineStates)")
             let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-            if ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_SETTINGS"] != nil {
-                SettingsWindow.shared.show(model: model)
-                if let window = NSApp.windows.first(where: { $0.title == "Tunnels Settings" }) {
-                    window.setFrameTopLeftPoint(NSPoint(x: 40, y: screen.height - 60))
-                }
-            } else {
-                statusItem.openForSnapshot(topLeft: NSPoint(x: 40, y: screen.height - 60))
-                DebugLog.log("panel at 40,60 size \(Int(statusItem.panel?.frame.width ?? 0))x\(Int(statusItem.panel?.frame.height ?? 0))")
+            statusItem.openForSnapshot(topLeft: NSPoint(x: 40, y: screen.height - 60))
+            switch ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_PAGE"] {
+            case "settings": model.menuPage = .settings
+            case "pinned": model.menuPage = .pinned
+            case "logs": model.menuPage = .logs
+            default: break
             }
+            DebugLog.log("panel at 40,60 size \(Int(statusItem.panel?.frame.width ?? 0))x\(Int(statusItem.panel?.frame.height ?? 0))")
             DispatchQueue.main.asyncAfter(deadline: .now() + hold) { NSApp.terminate(nil) }
         }
     }
