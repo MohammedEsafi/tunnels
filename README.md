@@ -37,9 +37,10 @@ want "Start at login" to keep working after you move the build folder.
 
 ## Favourites
 
-`~/.config/tunnels/favourites.toml` (or `$XDG_CONFIG_HOME/tunnels/favourites.toml`).
-The app creates a commented template on first run and reloads the file whenever
-it changes.
+Stars in the menu write to `~/.config/tunnels/favourites.toml` (or
+`$XDG_CONFIG_HOME/tunnels/favourites.toml`), so you never have to open the file.
+It is plain TOML if you want to keep it in your dotfiles, rename entries, or add
+them by hand; the app reloads it whenever it changes.
 
 ```toml
 [[favourite]]
@@ -74,8 +75,12 @@ Problems in the file are shown at the top of the popover with an Open button.
   Red circle with ↻: that one forward failed while the connection is fine,
   click to try it again. Grey: not running. Hover a machine row for the
   reason or the retry countdown.
-- **First run.** With no favourites, the menu lists the Host aliases from
-  `~/.ssh/config`. Click one and type the port.
+- **Favourites from the menu.** Hover a forward and click the star to save it
+  to the favourites file, or click the filled star to remove it. A running
+  forward keeps running either way. The file itself is only needed for
+  renaming or hand edits; Settings… opens it.
+- **First run.** The menu shows just the field. Type `host:port` and press
+  Return; star it if you want it back next time.
 - **Outside the app.** `ssh -L` processes you started elsewhere show under
   their machine with a terminal icon; hover for Stop. They are never adopted.
 - **Close All** and **Settings…** (start at login, the favourites file,

@@ -29,9 +29,6 @@ struct PopoverView: View {
                     if !model.favouritesProblems.isEmpty {
                         problemsRow
                     }
-                    if model.sectionAliases.isEmpty {
-                        emptyState
-                    }
                     ForEach(model.sectionAliases, id: \.self) { alias in
                         MachineSection(alias: alias)
                     }
@@ -100,64 +97,6 @@ struct PopoverView: View {
         .padding(.vertical, 6)
     }
 
-    /// E2: the Host aliases from ~/.ssh/config as a starting list. Clicking
-    /// one prefills "host:" so only the port is left to type.
-    @ViewBuilder
-    private var emptyState: some View {
-        if model.hosts.isEmpty {
-            HStack(spacing: 8) {
-                RowIcon(symbol: "exclamationmark", tint: .orange)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("No hosts in ~/.ssh/config").font(.system(size: 13))
-                    Text("Add a Host entry first").font(.system(size: 11)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Open") { model.openSSHConfig() }
-                    .controlSize(.small)
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 36)
-            .padding(.vertical, 2)
-        } else {
-            Text("Your SSH hosts")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .frame(height: 22)
-            ForEach(model.hosts, id: \.self) { host in
-                HostRow(host: host)
-            }
-        }
-    }
-}
-
-/// A grey machine row for the empty state.
-struct HostRow: View {
-    @Environment(AppModel.self) private var model
-    let host: String
-    @State private var hovering = false
-
-    var body: some View {
-        Button {
-            model.prefillQuickOpen(host: host)
-        } label: {
-            HStack(spacing: 8) {
-                RowIcon(symbol: "desktopcomputer")
-                Text(host).font(.system(size: 13)).lineLimit(1)
-                Spacer()
-                if hovering {
-                    Text("choose a port").font(.system(size: 11)).foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(RowHighlight(on: hovering))
-        .onHover { hovering = $0 }
-    }
 }
 
 struct MenuSeparator: View {

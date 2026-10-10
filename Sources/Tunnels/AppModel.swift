@@ -144,6 +144,21 @@ final class AppModel {
         reconnector.retryNow(alias)
     }
 
+    /// Star / unstar from the row. Writes the favourites file; the watcher
+    /// reloads it and the row keeps its state either way.
+    func toggleFavourite(_ forward: Forward) {
+        do {
+            if forward.isFavourite {
+                try Favourites.remove(forward.spec, from: favouritesURL)
+            } else {
+                try Favourites.add(Favourite(name: forward.name, spec: forward.spec), to: favouritesURL)
+            }
+            reloadFavourites()
+        } catch {
+            favouritesProblems = [error.localizedDescription]
+        }
+    }
+
     func removeAdHoc(_ forward: Forward) {
         Task { await controller.remove(id: forward.id) }
     }
