@@ -1,0 +1,28 @@
+services:
+  # Two "machines" from the same image, so grouping by machine can be tested.
+  box-a:
+    build: .
+    hostname: box-a
+    ports:
+      - "127.0.0.1:2222:22"
+    volumes:
+      - ./keys/tunnels_test.pub:/keys/authorized_keys:ro
+    networks: [lab]
+
+  box-b:
+    build: .
+    hostname: box-b
+    ports:
+      - "127.0.0.1:2223:22"
+    volumes:
+      - ./keys/tunnels_test.pub:/keys/authorized_keys:ro
+    networks: [lab]
+
+  # Only reachable from inside the lab network: forward to it *through* a box
+  # with remote_host = redis, e.g. box-a:16379:redis:6379
+  redis:
+    image: redis:7-alpine
+    networks: [lab]
+
+networks:
+  lab: {}
