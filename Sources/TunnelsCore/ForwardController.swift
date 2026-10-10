@@ -58,9 +58,13 @@ public final class ForwardController {
                 next.append(Forward(spec: item.spec, name: item.name, isFavourite: true))
             }
         }
-        // Ad-hoc forwards stay as long as they are on.
-        for existing in forwards where !existing.isFavourite && existing.desiredOn {
-            if !next.contains(where: { $0.spec == existing.spec }) { next.append(existing) }
+        // Anything still on stays in the list, now as an ad-hoc forward.
+        for existing in forwards where existing.desiredOn {
+            if !next.contains(where: { $0.spec == existing.spec }) {
+                var adHoc = existing
+                adHoc.isFavourite = false
+                next.append(adHoc)
+            }
         }
         forwards = next
     }

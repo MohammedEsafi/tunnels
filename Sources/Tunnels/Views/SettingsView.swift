@@ -68,7 +68,10 @@ private struct GeneralSettings: View {
                 LabeledContent("Keys in agent") {
                     Text("Managed by ssh-agent. Use ssh-add in Terminal.").foregroundStyle(.secondary)
                 }
-                Button("Reload Hosts") { model.reloadHosts() }
+                HStack {
+                    Button("Open SSH Config") { model.openSSHConfig() }
+                    Button("Reload Hosts") { model.reloadHosts() }
+                }
             }
         }
         .formStyle(.grouped)

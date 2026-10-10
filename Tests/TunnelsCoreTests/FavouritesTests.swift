@@ -99,6 +99,49 @@ final class FavouritesTests: XCTestCase {
         XCTAssertEqual(try Favourites.parse(Favourites.template), [])
     }
 
+    func testAddAndRemoveRoundTrip() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("favourites.toml")
+        try """
+        # my favourites
+
+        [[favourite]]
+        name = "postgres"   # keep this comment
+        host = "prod"
+        port = 5432
+
+        [settings]
+        x = 1
+        """.write(to: url, atomically: true, encoding: .utf8)
+
+        let web = Favourite(name: "web", spec: ForwardSpec(machine: "staging", localPort: 28080, remoteHost: "db.internal", remotePort: 8080))
+        try Favourites.add(web, to: url)
+        var loaded = try Favourites.load(from: url)
+        XCTAssertEqual(loaded.map(\.name), ["postgres", "web"])
+        XCTAssertEqual(loaded[1].spec, web.spec)
+
+        XCTAssertTrue(try Favourites.remove(ForwardSpec(machine: "prod", localPort: 5432), from: url))
+        loaded = try Favourites.load(from: url)
+        XCTAssertEqual(loaded.map(\.name), ["web"])
+        let text = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertTrue(text.contains("# my favourites"))
+        XCTAssertTrue(text.contains("[settings]"))
+        XCTAssertFalse(text.contains("keep this comment"))
+
+        XCTAssertFalse(try Favourites.remove(ForwardSpec(machine: "nope", localPort: 1), from: url))
+    }
+
+    func testAddCreatesFileWithTemplate() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("tunnels/favourites.toml")
+        try Favourites.add(Favourite(name: "4040", spec: ForwardSpec(machine: "echo", localPort: 4040)), to: url)
+        XCTAssertEqual(try Favourites.load(from: url), [Favourite(name: "4040", spec: ForwardSpec(machine: "echo", localPort: 4040))])
+        XCTAssertTrue(try String(contentsOf: url, encoding: .utf8).hasPrefix("# Tunnels favourites"))
+    }
+
     func testLoadCreatesTemplateOnFirstRun() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

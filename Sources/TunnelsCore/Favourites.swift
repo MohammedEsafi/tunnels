@@ -112,6 +112,78 @@ public enum Favourites {
     }
 }
 
+// MARK: Writing
+
+public extension Favourites {
+    /// One [[favourite]] block. Only non-default keys are written.
+    static func serialize(_ favourite: Favourite) -> String {
+        var lines = [
+            "[[favourite]]",
+            "name = \"\(escape(favourite.name))\"",
+            "host = \"\(escape(favourite.spec.machine))\"",
+            "port = \(favourite.spec.localPort)",
+        ]
+        if favourite.spec.remotePort != favourite.spec.localPort {
+            lines.append("remote_port = \(favourite.spec.remotePort)")
+        }
+        if favourite.spec.remoteHost != "localhost" {
+            lines.append("remote_host = \"\(escape(favourite.spec.remoteHost))\"")
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// Append a favourite to the file, creating it (with the template) if needed.
+    static func add(_ favourite: Favourite, to url: URL = defaultURL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        var text = (try? String(contentsOf: url, encoding: .utf8)) ?? template
+        if !text.isEmpty && !text.hasSuffix("\n") { text += "\n" }
+        if !text.isEmpty && !text.hasSuffix("\n\n") { text += "\n" }
+        text += serialize(favourite)
+        try text.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    /// Remove the [[favourite]] block whose host and port match. Other blocks
+    /// and their comments are left exactly as they were.
+    @discardableResult
+    static func remove(_ spec: ForwardSpec, from url: URL = defaultURL) throws -> Bool {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        let lines = text.components(separatedBy: "\n")
+        // Block = a [[favourite]] header line up to the next header or end.
+        var blocks: [Range<Int>] = []
+        var start: Int?
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[[") || trimmed.hasPrefix("[") && !trimmed.hasPrefix("[[") {
+                if let s = start { blocks.append(s..<index) }
+                start = trimmed.hasPrefix("[[favourite]]") ? index : nil
+            }
+        }
+        if let s = start { blocks.append(s..<lines.count) }
+
+        for block in blocks.reversed() {
+            let blockText = lines[block].joined(separator: "\n")
+            guard let parsed = try? MiniTOML.parse(blockText),
+                  let table = parsed["favourite"]?.tables?.first,
+                  table["host"]?.string == spec.machine,
+                  table["port"]?.integer == spec.localPort else { continue }
+            var kept = lines
+            // Also drop blank lines directly above the block so no gap grows.
+            var lower = block.lowerBound
+            while lower > 0, kept[lower - 1].trimmingCharacters(in: .whitespaces).isEmpty { lower -= 1 }
+            kept.removeSubrange(lower..<block.upperBound)
+            var result = kept.joined(separator: "\n")
+            if !result.hasSuffix("\n") { result += "\n" }
+            try result.write(to: url, atomically: true, encoding: .utf8)
+            return true
+        }
+        return false
+    }
+
+    private static func escape(_ text: String) -> String {
+        text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+    }
+}
+
 /// Watches a file and its directory, since most editors replace files rather
 /// than writing in place. Fires on the main queue after a short debounce.
 public final class FileWatcher {

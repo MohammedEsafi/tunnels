@@ -42,15 +42,27 @@ struct ForwardRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(forward.name) \(forward.spec.portLabel) on \(forward.spec.machine)")
 
-            if hovering && !forward.isFavourite {
+            if hovering {
                 Button {
-                    model.removeAdHoc(forward)
+                    model.toggleFavourite(forward)
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    Image(systemName: forward.isFavourite ? "star.fill" : "star")
+                        .font(.system(size: 12))
+                        .foregroundStyle(forward.isFavourite ? Color.yellow : Color.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Remove this forward")
-                .accessibilityLabel("Remove \(forward.name)")
+                .help(forward.isFavourite ? "Remove from favourites" : "Add to favourites")
+                .accessibilityLabel(forward.isFavourite ? "Remove \(forward.name) from favourites" : "Add \(forward.name) to favourites")
+                if !forward.isFavourite {
+                    Button {
+                        model.removeAdHoc(forward)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Remove this forward")
+                    .accessibilityLabel("Remove \(forward.name)")
+                }
             }
             if !portIsName || forward.spec.localPort != forward.spec.remotePort {
                 PortColumn(spec: forward.spec)

@@ -140,6 +140,22 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(controller.machineState("dev-box"), .disconnected)
     }
 
+    func testRunningForwardSurvivesLosingFavouriteStatus() async {
+        await controller.setForward(id: id(postgres), on: true)
+        controller.setFavourites([(redis, "redis")])
+
+        let kept = controller.forwards.first { $0.spec == postgres }
+        XCTAssertNotNil(kept)
+        XCTAssertEqual(kept?.isFavourite, false)
+        XCTAssertEqual(kept?.state, .active)
+
+        controller.setFavourites([(redis, "redis"), (postgres, "pg")])
+        let again = controller.forwards.first { $0.spec == postgres }
+        XCTAssertEqual(again?.isFavourite, true)
+        XCTAssertEqual(again?.name, "pg")
+        XCTAssertEqual(again?.state, .active)
+    }
+
     func testSocketPathIsShortAndStable() {
         let dir = URL(fileURLWithPath: "/Users/someone/Library/Application Support/Tunnels/sockets")
         let a = SSHMaster.socketPath(for: "a-very-long-host-alias.example.internal", in: dir)
