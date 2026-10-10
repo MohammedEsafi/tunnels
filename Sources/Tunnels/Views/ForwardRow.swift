@@ -46,23 +46,21 @@ struct ForwardRow: View {
                 Button {
                     model.toggleFavourite(forward)
                 } label: {
-                    Image(systemName: forward.isFavourite ? "star.fill" : "star")
+                    Image(systemName: forward.isFavourite ? "pin.fill" : "pin")
                         .font(.system(size: 12))
-                        .foregroundStyle(forward.isFavourite ? Color.yellow : Color.secondary)
+                        .foregroundStyle(forward.isFavourite ? Color.accentColor : Color.secondary)
                 }
                 .buttonStyle(.plain)
-                .help(forward.isFavourite ? "Remove from favourites" : "Add to favourites")
-                .accessibilityLabel(forward.isFavourite ? "Remove \(forward.name) from favourites" : "Add \(forward.name) to favourites")
-                if !forward.isFavourite {
-                    Button {
-                        model.removeAdHoc(forward)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Remove this forward")
-                    .accessibilityLabel("Remove \(forward.name)")
+                .help(forward.isFavourite ? "Unpin: forget it next time" : "Pin: keep it for next time")
+                .accessibilityLabel(forward.isFavourite ? "Unpin \(forward.name)" : "Pin \(forward.name)")
+                Button {
+                    model.removeForward(forward)
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
+                .buttonStyle(.plain)
+                .help(forward.isFavourite ? "Close and unpin" : "Close")
+                .accessibilityLabel("Remove \(forward.name)")
             }
             if !portIsName || forward.spec.localPort != forward.spec.remotePort {
                 PortColumn(spec: forward.spec)
