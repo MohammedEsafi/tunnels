@@ -15,7 +15,10 @@ final class AppModel {
 
     private(set) var favourites: [Favourite] = []
     private(set) var favouritesProblems: [String] = []
-    private(set) var hosts: [String] = []
+    /// ssh config Hosts first, then Tailscale peers not already covered.
+    private(set) var hosts: [HostEntry] = []
+    private var sshConfigHosts: [String] = []
+    private var tailscaleHosts: [HostEntry] = []
     private(set) var external: [ExternalForward] = []
     private(set) var isRestoring = false
     /// Debug runs turn this off so a throwaway session is not restored later.
@@ -25,7 +28,7 @@ final class AppModel {
     var popoverVisible = false {
         didSet {
             popoverVisible ? startExternalScanning() : stopExternalScanning()
-            if !popoverVisible { quickOpenVisible = false; quickOpenText = ""; menuPage = .main }
+            if popoverVisible { reloadHosts() } else { quickOpenVisible = false; quickOpenText = ""; menuPage = .main }
         }
     }
 
@@ -130,7 +133,21 @@ final class AppModel {
     }
 
     func reloadHosts() {
-        hosts = SSHConfig.hostAliases()
+        sshConfigHosts = SSHConfig.hostAliases()
+        mergeHosts()
+        Task {
+            tailscaleHosts = await TailscaleHosts.fetch(runner: runner)
+            mergeHosts()
+        }
+    }
+
+    private func mergeHosts() {
+        var merged = sshConfigHosts.map { HostEntry(name: $0, source: .sshConfig) }
+        let known = Set(sshConfigHosts.map { $0.lowercased() })
+        for host in tailscaleHosts where !known.contains(host.name) {
+            merged.append(host)
+        }
+        hosts = merged
     }
 
     func openFavouritesFile() {

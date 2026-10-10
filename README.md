@@ -18,9 +18,10 @@ network change.
 ## Requirements
 
 - macOS 14 or newer.
-- Host aliases in `~/.ssh/config`, with keys loaded in `ssh-agent` (`ssh-add`).
-  The app runs ssh in batch mode, so a key that needs a passphrase prompt shows
-  as "No usable key in the agent".
+- Machines reachable by `ssh <name>`: Host aliases in `~/.ssh/config`, or
+  Tailscale MagicDNS names. Keys loaded in `ssh-agent` (`ssh-add`); the app
+  runs ssh in batch mode, so a key that needs a passphrase prompt shows as
+  "No usable key in the agent".
 
 ## Build
 
@@ -65,7 +66,10 @@ Problems in the file are shown at the top of the popover with an Open button.
   toggles it too.
 - **Ports.** The right-hand column shows the local port, and `28080 → 18080`
   only when the remote port differs. Click it to copy `localhost:<port>`.
-- **Adding.** The + button (or ⌘N) shows the field. Type `host:port`,
+- **Adding.** The + button (or ⌘N) shows the field. With the field empty it
+  lists your favourites and machines: Host aliases from `~/.ssh/config` plus
+  Tailscale peers when the `tailscale` CLI is installed (offline ones say so).
+  Type `host:port`,
   `host:local:remote`, or `host:local:remoteHost:remote` and press Return.
   Typing part of a favourite name or a Host alias shows suggestions; arrow
   keys and Return pick one. Ad-hoc forwards appear under their machine and

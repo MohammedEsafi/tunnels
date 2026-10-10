@@ -95,7 +95,7 @@ struct QuickOpenField: View {
             model.open(spec)
             text = ""
         case .host(let host):
-            text = host + ":"
+            text = host.name + ":"
             focused = true
         }
     }
@@ -115,10 +115,12 @@ private struct SuggestionRow: View {
                 Spacer()
                 Text("Favourite").foregroundStyle(secondary).font(.system(size: 11))
             case .host(let host):
-                Text(host)
-                Text("type a port").foregroundStyle(secondary).font(.system(size: 11))
+                Text(host.name)
+                if host.online == false {
+                    Text("offline").foregroundStyle(secondary).font(.system(size: 11))
+                }
                 Spacer()
-                Text("Host").foregroundStyle(secondary).font(.system(size: 11))
+                Text(host.source == .tailscale ? "Tailscale" : "SSH config").foregroundStyle(secondary).font(.system(size: 11))
             case .spec(let spec):
                 Text("Open \(spec.portLabel) on \(spec.machine)")
                 if spec.remoteHost != "localhost" {
