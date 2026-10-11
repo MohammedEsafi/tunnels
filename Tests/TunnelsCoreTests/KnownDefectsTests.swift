@@ -133,9 +133,7 @@ final class KnownDefectsTests: XCTestCase {
 
     // P1-5
     func testRemoteRefusalIsNotReportedAsLocalPortInUse() {
-        XCTExpectFailure("P1-5: 'port forwarding failed' is checked before 'remote port forwarding failed'") {
-            XCTAssertEqual(SSHErrorText.humanize("remote port forwarding failed for listen port 80"), "Remote end refused the forward")
-        }
+        XCTAssertEqual(SSHErrorText.humanize("remote port forwarding failed for listen port 80"), "Remote end refused the forward")
     }
 
     // P1-6
@@ -147,8 +145,6 @@ final class KnownDefectsTests: XCTestCase {
         tcp4       0      0  10.0.0.5.3000          10.0.0.9.51234         SYN_SENT
         udp4       0      0  *.5353                 *.*
         """
-        XCTExpectFailure("P1-6: only ESTABLISHED/TIME_WAIT/CLOSE_WAIT lines are skipped") {
-            XCTAssertEqual(PortDiscovery.parse(netstat), [5432])
-        }
+        XCTAssertEqual(PortDiscovery.parse(netstat), [5432])
     }
 }

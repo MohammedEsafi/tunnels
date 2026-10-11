@@ -42,6 +42,10 @@ public enum SSHErrorText {
         if lower.contains("could not resolve hostname") {
             return "Unknown host"
         }
+        // The remote wording contains the local one, so it goes first.
+        if lower.contains("remote port forwarding failed") {
+            return "Remote end refused the forward"
+        }
         if lower.contains("address already in use") || lower.contains("port forwarding failed") {
             return "Local port in use"
         }
@@ -54,7 +58,7 @@ public enum SSHErrorText {
         if lower.contains("host key verification failed") {
             return "Host key verification failed"
         }
-        if lower.contains("remote port forwarding failed") || lower.contains("forwarding failed") {
+        if lower.contains("forwarding failed") {
             return "Remote end refused the forward"
         }
         if lower.contains("control socket") && lower.contains("no such file") {

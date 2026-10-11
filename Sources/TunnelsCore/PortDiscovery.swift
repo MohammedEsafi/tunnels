@@ -27,9 +27,9 @@ public enum PortDiscovery {
                 ports.insert(port)
                 continue
             }
-            let lower = line.lowercased()
-            // netstat -an prints every socket; keep listeners only.
-            if lower.contains("established") || lower.contains("time_wait") || lower.contains("close_wait") { continue }
+            // ss and netstat both print LISTEN for a listening TCP socket; every
+            // other state, and UDP (which has no state column), is not one.
+            guard line.lowercased().contains("listen") else { continue }
             for token in line.split(whereSeparator: { $0 == " " || $0 == "\t" }) {
                 guard let colon = token.lastIndex(where: { $0 == ":" || $0 == "." }),
                       let port = Int(token[token.index(after: colon)...]) else { continue }
