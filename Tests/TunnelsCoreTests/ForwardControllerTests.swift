@@ -184,6 +184,31 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(controller.forwards.first { $0.spec == redis }?.state, .active)
     }
 
+    func testCloseAllStopsWatchingAndMasters() async {
+        runner.script = { args in
+            if args.contains("--") { return ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*") }
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            return ProcessResult(exitCode: 0)
+        }
+        controller.discoveryInterval = 3600
+        await controller.setForward(id: id(postgres), on: true)
+        controller.enableAutoHost("gpu-box")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline, controller.forwards(on: "gpu-box").first?.state != .active {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertTrue(controller.anyDesired)
+
+        await controller.closeAll()
+
+        XCTAssertFalse(controller.anyDesired)
+        XCTAssertFalse(controller.forwards.contains { $0.desiredOn })
+        XCTAssertTrue(controller.autoHosts.isEmpty, "Close All also stops all-ports watching")
+        XCTAssertEqual(controller.machineState("gpu-box"), .disconnected)
+        XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)
+        XCTAssertTrue(runner.runningMasters.isEmpty)
+    }
+
     func testAllPortsDiscoversAddsAndRemoves() async {
         var listeners = "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:5173 0.0.0.0:*\nLISTEN 0 1 0.0.0.0:22 0.0.0.0:*"
         runner.script = { args in
