@@ -14,8 +14,12 @@ struct QuickOpenField: View {
         nonmutating set { model.quickOpenText = newValue }
     }
 
+    /// Forwards already on are not worth suggesting; the switch is right there.
     private var suggestions: [Suggestion] {
-        QuickOpen.suggestions(for: text, favourites: model.favourites, hosts: model.hosts)
+        let off = model.favourites.filter { favourite in
+            !(model.controller.forwards.first { $0.spec == favourite.spec }?.desiredOn ?? false)
+        }
+        return QuickOpen.suggestions(for: text, favourites: off, hosts: model.hosts)
     }
 
     var body: some View {
@@ -118,7 +122,9 @@ private struct SuggestionRow: View {
             switch suggestion {
             case .favourite(let favourite):
                 Text(favourite.name)
-                Text(favourite.spec.portLabel).foregroundStyle(secondary).font(.system(size: 12)).monospacedDigit()
+                if favourite.name != favourite.spec.portLabel {
+                    Text(favourite.spec.portLabel).foregroundStyle(secondary).font(.system(size: 12)).monospacedDigit()
+                }
                 Text(favourite.spec.machine).foregroundStyle(secondary).font(.system(size: 11))
                 Spacer()
                 Text("Forward").foregroundStyle(secondary).font(.system(size: 11))
