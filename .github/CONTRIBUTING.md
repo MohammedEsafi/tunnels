@@ -4,7 +4,7 @@ The how-to lives in the repository's Claude Code skills under
 [`.agents/skills/`](../.agents/skills): open the repo in Claude Code and ask,
 or read the files directly. `contribute` has the steps, the commit
 format and the house rules; `testing` says how to verify a change;
-`design` says where code belongs.
+`architecture` says where code belongs.
 
 The short version: no new dependencies; a core change comes with a test that
 failed first; `swift build -Xswiftc -warnings-as-errors`, `swift test` and
