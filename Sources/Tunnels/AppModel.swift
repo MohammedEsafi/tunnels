@@ -423,8 +423,15 @@ final class AppModel {
             try? Favourites.setOffset(nil, forHost: alias, in: favouritesURL)
         }
         reloadFavourites()
-        controller.clearOffset(alias)
-        controller.enableAutoHost(alias, excluded: [], offset: nil)
+        // A real restart: drop what discovery had, forget the offset, scan afresh.
+        Task {
+            await controller.disableAutoHost(alias)
+            controller.clearOffset(alias)
+            controller.enableAutoHost(alias, excluded: [], offset: nil)
+            if controller.forwards(on: alias).contains(where: { !$0.isDiscovered }) {
+                await controller.setMachine(alias: alias, on: true)
+            }
+        }
     }
 
     /// Resume watching with the exclusions and offset on file, and reopen

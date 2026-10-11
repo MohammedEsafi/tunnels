@@ -201,8 +201,15 @@ public final class ForwardController {
         for port in wanted.sorted() where !current.contains(where: { $0.spec.remotePort == port }) {
             await openDiscovered(port, on: alias)
         }
+        // Enforce the rule every time, whatever history produced: with an
+        // offset, no discovered row may sit on a plain number; and a failed
+        // row gets another go (its local port may have freed up).
         for forward in forwards(on: alias) where forward.isDiscovered {
-            if case .error = forward.state {
+            let wrongNumber = offsets[alias] != nil && forward.spec.localPort == forward.spec.remotePort
+            var failed = false
+            if case .error = forward.state { failed = true }
+            if wrongNumber || failed {
+                await close(forward)
                 forwards.removeAll { $0.id == forward.id }
                 await openDiscovered(forward.spec.remotePort, on: alias)
             }
