@@ -439,14 +439,12 @@ final class AppModel {
         }
     }
 
-    /// Resume watching with the exclusions and offset on file, and reopen
-    /// any pinned forwards on the same machine.
+    /// At launch: resume watching with the exclusions and offset on file, and
+    /// reopen pinned forwards on the same machine as they were (no "try the
+    /// plain number" pass; that is for a switch-on by hand).
     private func resumeAllPorts(_ alias: String) {
         let host = autoHosts.first { $0.name == alias }
         controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: host?.offset)
-        if controller.forwards(on: alias).contains(where: { !$0.isDiscovered }) {
-            Task { await controller.setMachine(alias: alias, on: true) }
-        }
     }
 
     /// The question's other answer: freeze what all-ports mode had found.
@@ -471,10 +469,12 @@ final class AppModel {
     /// mode itself is changed from the host's right-click menu.
     func switchOn(_ alias: String) {
         if isAutoHost(alias) {
-            resumeAllPorts(alias)
-        } else {
-            Task { await controller.setMachine(alias: alias, on: true) }
+            let host = autoHosts.first { $0.name == alias }
+            try? Favourites.setOffset(nil, forHost: alias, in: favouritesURL)
+            reloadFavourites()
+            controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: nil)
         }
+        Task { await controller.setMachine(alias: alias, on: true) }
     }
 
     /// "Not this one" on a discovered row.
