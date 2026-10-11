@@ -104,7 +104,7 @@ struct SettingsPage: View {
             if let loginError {
                 Text(loginError).font(.system(size: 11)).foregroundStyle(.red).padding(.horizontal, 10)
             }
-            ToggleRow(title: "Notify when a connection gives up", isOn: $model.notifyOnGiveUp)
+            ToggleRow(title: "Notify about dropped connections", isOn: $model.notifyOnGiveUp)
 
             MenuSeparator()
             LinkRow(title: "Forwards", detail: model.favourites.isEmpty ? nil : "\(model.favourites.count)") { model.menuPage = .pinned }

@@ -45,6 +45,7 @@ final class SystemEvents {
 /// asked for lazily, the first time there is something to say.
 enum Notifier {
     static func post(title: String, body: String) {
+        DebugLog.log("notification: \(title) — \(body)")
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }

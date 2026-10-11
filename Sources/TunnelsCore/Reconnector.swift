@@ -11,6 +11,13 @@ public final class Reconnector {
     public var debounce: TimeInterval = 3
     /// Alias and reason, fired once per exhausted budget.
     public var onGaveUp: ((String, String) -> Void)?
+    /// Alias and how long it was down, fired when a machine comes back on its
+    /// own after being down at least `noticeAfter` seconds. Not fired for a
+    /// retry the user asked for.
+    public var onReconnected: ((String, TimeInterval) -> Void)?
+    public var noticeAfter: TimeInterval = 10
+
+    private var droppedSince: [String: Date] = [:]
 
     /// When the next attempt for a machine is due, for the "Retrying in" text.
     public private(set) var nextAttempt: [String: Date] = [:]
@@ -28,6 +35,7 @@ public final class Reconnector {
 
     /// Start (or restart) the backoff loop for a machine.
     public func schedule(_ alias: String) {
+        if droppedSince[alias] == nil { droppedSince[alias] = Date() }
         loops[alias]?.cancel()
         loops[alias] = Task { [weak self] in
             await self?.loop(alias)
@@ -35,18 +43,31 @@ public final class Reconnector {
     }
 
     /// Skip the wait and try now. If that fails the loop starts over.
-    public func retryNow(_ alias: String) {
+    public func retryNow(_ alias: String, userInitiated: Bool = false) {
         loops[alias]?.cancel()
         nextAttempt[alias] = nil
+        if userInitiated { droppedSince[alias] = nil }
         loops[alias] = Task { [weak self] in
             guard let self else { return }
             await controller.retry(alias: alias)
             if Task.isCancelled { return }
-            if controller.machineState(alias) != .connected, controller.forwards(on: alias).contains(where: { $0.desiredOn }) {
+            if controller.machineState(alias) == .connected {
+                loops[alias] = nil
+                reportBack(alias)
+            } else if controller.forwards(on: alias).contains(where: { $0.desiredOn }) {
                 schedule(alias)
             } else {
                 loops[alias] = nil
+                droppedSince[alias] = nil
             }
+        }
+    }
+
+    private func reportBack(_ alias: String) {
+        guard let since = droppedSince.removeValue(forKey: alias) else { return }
+        let elapsed = Date().timeIntervalSince(since)
+        if elapsed >= noticeAfter {
+            onReconnected?(alias, elapsed)
         }
     }
 
@@ -76,6 +97,7 @@ public final class Reconnector {
         loops[alias]?.cancel()
         loops[alias] = nil
         nextAttempt[alias] = nil
+        droppedSince[alias] = nil
     }
 
     private func loop(_ alias: String) async {
@@ -93,6 +115,7 @@ public final class Reconnector {
             if Task.isCancelled { return }
             if controller.machineState(alias) == .connected {
                 loops[alias] = nil
+                reportBack(alias)
                 return
             }
             if case .failed(let reason) = controller.machineState(alias) {
@@ -101,6 +124,7 @@ public final class Reconnector {
         }
         controller.markFailed(alias: alias, reason: lastReason)
         loops[alias] = nil
+        droppedSince[alias] = nil
         onGaveUp?(alias, lastReason)
     }
 }

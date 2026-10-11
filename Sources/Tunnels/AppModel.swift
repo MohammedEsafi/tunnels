@@ -109,6 +109,12 @@ final class AppModel {
             guard self?.notifyOnGiveUp ?? true else { return }
             Notifier.post(title: "\(alias) is down", body: "\(reason). Open Tunnels to retry.")
         }
+        reconnector.onReconnected = { [weak self] alias, elapsed in
+            guard let self, notifyOnGiveUp else { return }
+            let open = controller.forwards(on: alias).filter { $0.state == .active }.count
+            let forwards = open == 1 ? "1 forward open" : "\(open) forwards open"
+            Notifier.post(title: "\(alias) is back", body: "Reconnected after \(Self.describe(elapsed)). \(forwards).")
+        }
 
         reloadFavourites()
         reloadHosts()
@@ -220,7 +226,17 @@ final class AppModel {
     }
 
     func retryNow(_ alias: String) {
-        reconnector.retryNow(alias)
+        reconnector.retryNow(alias, userInitiated: true)
+    }
+
+    /// "45 seconds", "3 minutes", "2 hours".
+    static func describe(_ seconds: TimeInterval) -> String {
+        let s = Int(seconds.rounded())
+        if s < 90 { return "\(s) seconds" }
+        let m = Int((seconds / 60).rounded())
+        if m < 90 { return "\(m) minutes" }
+        let h = Int((seconds / 3600).rounded())
+        return h == 1 ? "1 hour" : "\(h) hours"
     }
 
     /// The × on a row: close it and forget it.
