@@ -7,7 +7,7 @@ struct MachineSection: View {
     @Environment(AppModel.self) private var model
     let alias: String
 
-    private var forwards: [Forward] { model.controller.forwards(on: alias) }
+    private var forwards: [Forward] { model.forwards(on: alias) }
     private var external: [ExternalForward] { model.external(on: alias) }
 
     var body: some View {
@@ -70,7 +70,7 @@ struct MachineSection: View {
         Button("Copy ssh Command") { model.copySSHCommand(alias) }
             .disabled(!forwards.contains { $0.desiredOn })
         Button("Show Log") { model.showLog(alias) }
-            .disabled(model.controller.logs[alias] == nil)
+            .disabled(model.log(for: alias) == nil)
         Divider()
         Button("Forget Machine") { model.forgetMachine(alias) }
             .disabled(forwards.isEmpty && !isAuto)

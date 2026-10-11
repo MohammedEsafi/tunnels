@@ -127,11 +127,11 @@ struct SettingsPage: View {
 /// Machines by name; click one to see its ssh lines. Nothing else.
 struct LogsPage: View {
     @Environment(AppModel.self) private var model
-    @State private var selected: String? = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_LOG"]
+    @State private var selected: String?
     @State private var textHeight: CGFloat = 0
     @State private var tookSelection = false
 
-    private var aliases: [String] { model.controller.logs.keys.sorted() }
+    private var aliases: [String] { model.loggedAliases }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -153,7 +153,7 @@ struct LogsPage: View {
                     // A ScrollView has no intrinsic height in this panel: size it to
                     // the text, up to a cap, like the other lists.
                     ScrollView {
-                        Text((model.controller.logs[alias] ?? []).joined(separator: "\n"))
+                        Text((model.log(for: alias) ?? []).joined(separator: "\n"))
                             .font(.system(size: 11, design: .monospaced))
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)

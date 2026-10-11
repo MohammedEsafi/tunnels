@@ -7,20 +7,17 @@ import TunnelsCore
 /// launch, holds it, then quits, so `screencapture` can grab it.
 enum DebugSnapshot {
     @MainActor
-    static func scheduleIfRequested(statusItem: StatusItemController) {
+    static func scheduleIfRequested(model: AppModel, statusItem: StatusItemController) {
         guard ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT"] != nil else { return }
         let delay = Double(ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_DELAY"] ?? "") ?? 6
         let hold = Double(ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_HOLD"] ?? "") ?? 4
-        AppModel.shared.persistStateOnQuit = false
+        model.persistStateOnQuit = false
         if let host = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_ALL"], !host.isEmpty {
-            Task { @MainActor in AppModel.shared.enableAllPorts(host) }
+            Task { @MainActor in model.enableAllPorts(host) }
         }
         if ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_TURN_ON"] != nil {
             Task { @MainActor in
-                let model = AppModel.shared
-                for forward in model.controller.forwards {
-                    await model.controller.setForward(id: forward.id, on: true)
-                }
+                for forward in model.controller.forwards { model.setForward(forward, on: true) }
             }
         }
         // TUNNELS_SNAPSHOT_SCRIPT="exclude:box-b:7777@8,off:box-b@12,on:box-b@15,all:box-b@16"
@@ -30,7 +27,6 @@ enum DebugSnapshot {
                 guard parts.count == 2, let at = Double(parts[1]) else { continue }
                 let fields = parts[0].split(separator: ":").map(String.init)
                 DispatchQueue.main.asyncAfter(deadline: .now() + at) {
-                    let model = AppModel.shared
                     DebugLog.log("script: \(step)")
                     switch fields.first {
                     case "exclude":
@@ -55,13 +51,13 @@ enum DebugSnapshot {
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            let model = AppModel.shared
             DebugLog.log("snapshot: forwards=\(model.controller.forwards.map { "\($0.spec.machine):\($0.spec.localPort) \($0.state) disc=\($0.isDiscovered)" }) machines=\(model.controller.machines) auto=\(model.controller.autoHosts) excluded=\(model.controller.autoExcluded) states=\(model.controller.machineStates)")
             for (alias, lines) in model.controller.logs { DebugLog.log("log \(alias):\n  " + lines.joined(separator: "\n  ")) }
             let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             if let edit = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_EDITPORT"], let spec = QuickOpen.parse(edit) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { model.debugEditPort = spec }
             }
+            if let alias = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_LOG"], !alias.isEmpty { model.logSelection = alias }
             statusItem.openForSnapshot(topLeft: NSPoint(x: 40, y: screen.height - 60))
             switch ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_PAGE"] {
             case "settings": model.menuPage = .settings

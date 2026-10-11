@@ -175,7 +175,7 @@ struct ForwardRow: View {
 
     private var retryHelp: String {
         if case .error(let text) = forward.state { return "Retry · \(SSHErrorText.short(text))" }
-        if case .failed(let reason) = model.controller.machineState(forward.spec.machine) { return "Retry · \(SSHErrorText.short(reason))" }
+        if case .failed(let reason) = model.machineState(forward.spec.machine) { return "Retry · \(SSHErrorText.short(reason))" }
         return "Retry"
     }
 

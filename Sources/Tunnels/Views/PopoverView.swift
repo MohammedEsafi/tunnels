@@ -65,7 +65,7 @@ struct PopoverView: View {
             .frame(height: min(listHeight, 620))
 
             MenuSeparator()
-            MenuRow("Close All", enabled: model.controller.anyDesired) { model.closeAll() }
+            MenuRow("Close All", enabled: model.anyDesired) { model.closeAll() }
             MenuSeparator()
             MenuRow("Settings…") { model.menuPage = .settings }
                 .keyboardShortcut(",")
