@@ -56,19 +56,8 @@ public enum QuickOpen {
         }
 
         let needle = text.lowercased()
-        let hostPart = text.split(separator: ":", maxSplits: 1).first.map { $0.lowercased() } ?? needle
 
-        let matchingFavourites = favourites.filter {
-            $0.name.lowercased().contains(needle) || $0.spec.machine.lowercased().contains(needle) || $0.spec.machine.lowercased().hasPrefix(hostPart)
-        }
-        let ranked = matchingFavourites.sorted { a, b in
-            let aPrefix = a.name.lowercased().hasPrefix(needle) || a.spec.machine.lowercased().hasPrefix(needle)
-            let bPrefix = b.name.lowercased().hasPrefix(needle) || b.spec.machine.lowercased().hasPrefix(needle)
-            if aPrefix != bPrefix { return aPrefix }
-            return a.name < b.name
-        }
-        for favourite in ranked { result.append(.favourite(favourite)) }
-
+        // Machines first: a typed name is most likely a machine.
         if !text.contains(":") {
             let matchingHosts = hosts.filter { $0.name.lowercased().contains(needle) }
                 .sorted { a, b in
@@ -83,11 +72,21 @@ public enum QuickOpen {
             // Exactly one host named: offer every port on it, right under it.
             if let exact = matchingHosts.first(where: { $0.name.lowercased() == needle }) {
                 result.insert(.allPorts(exact.name), at: min(result.firstIndex(of: .host(exact)).map { $0 + 1 } ?? result.count, result.count))
-            } else if matchingHosts.isEmpty, matchingFavourites.isEmpty, isHost(text) {
+            } else if matchingHosts.isEmpty, isHost(text), !favourites.contains(where: { $0.name.lowercased().contains(needle) }) {
                 // A name we do not know, typed in full: ssh may still resolve it.
                 result.append(.allPorts(text))
             }
         }
+
+        // Then remembered forwards, matched by their own name only.
+        let matchingFavourites = favourites.filter { $0.name.lowercased().contains(needle) }
+        let ranked = matchingFavourites.sorted { a, b in
+            let aPrefix = a.name.lowercased().hasPrefix(needle)
+            let bPrefix = b.name.lowercased().hasPrefix(needle)
+            if aPrefix != bPrefix { return aPrefix }
+            return a.name < b.name
+        }
+        for favourite in ranked { result.append(.favourite(favourite)) }
 
         return Array(result.prefix(limit))
     }
