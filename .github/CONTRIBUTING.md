@@ -1,12 +1,9 @@
 # Contributing
 
 How to make a change, and what must pass before a pull request, is in the
-`contribute` skill:
-[`.agents/skills/contribute/SKILL.md`](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills/contribute/SKILL.md).
-How to verify it is in
-[`testing`](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills/testing/SKILL.md),
-and where code belongs is in
-[`architecture`](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills/architecture/SKILL.md).
+[contribute](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills/contribute/SKILL.md) skill. How to verify it is in
+[testing](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills/testing/SKILL.md), and where code belongs is in
+[architecture](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills/architecture/SKILL.md).
 
 The short version: no new dependencies; a core change comes with a test that
 failed first; `swift build -Xswiftc -warnings-as-errors`, `swift test` and
