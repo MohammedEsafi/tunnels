@@ -34,6 +34,7 @@ struct LinkRow: View {
     let title: String
     var detail: String?
     var external = false
+    var chevronDown = false
     let action: () -> Void
     @State private var hovering = false
 
@@ -45,7 +46,7 @@ struct LinkRow: View {
                 if let detail {
                     Text(detail).font(.system(size: 12)).foregroundStyle(.secondary)
                 }
-                Image(systemName: external ? "arrow.up.forward" : "chevron.right")
+                Image(systemName: external ? "arrow.up.forward" : (chevronDown ? "chevron.down" : "chevron.right"))
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
             }
@@ -109,7 +110,7 @@ struct SettingsPage: View {
             LinkRow(title: "Forwards", detail: model.favourites.isEmpty ? nil : "\(model.favourites.count)") { model.menuPage = .pinned }
             LinkRow(title: "Favourites File", external: true) { model.openFavouritesFile() }
             LinkRow(title: "SSH Config", external: true) { model.openSSHConfig() }
-            LinkRow(title: "Connection Logs", detail: model.controller.logs.isEmpty ? nil : "\(model.controller.logs.count)") { model.menuPage = .logs }
+            LinkRow(title: "Connection Logs") { model.menuPage = .logs }
 
             MenuSeparator()
             HStack {
@@ -228,13 +229,12 @@ private struct PinnedRow: View {
     }
 }
 
-/// ssh output per machine, inside the menu.
+/// Machines by name; click one to see its ssh lines. Nothing else.
 struct LogsPage: View {
     @Environment(AppModel.self) private var model
     @State private var selected: String?
 
     private var aliases: [String] { model.controller.logs.keys.sorted() }
-    private var lines: [String] { selected.flatMap { model.controller.logs[$0] } ?? [] }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -245,40 +245,22 @@ struct LogsPage: View {
                     .padding(.horizontal, 10).padding(.vertical, 8)
             }
             ForEach(aliases, id: \.self) { alias in
-                LinkRow(title: alias, detail: "\(model.controller.logs[alias]?.count ?? 0) lines") {
+                LinkRow(title: alias, chevronDown: selected == alias) {
                     selected = selected == alias ? nil : alias
                 }
                 if selected == alias {
-                    logView(for: alias)
+                    ScrollView {
+                        Text((model.controller.logs[alias] ?? []).joined(separator: "\n"))
+                            .font(.system(size: 11, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                    }
+                    .frame(maxHeight: 240)
                 }
             }
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .trailing)))
-    }
-
-    private func logView(for alias: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ScrollView {
-                Text(lines.isEmpty ? "No output." : lines.joined(separator: "\n"))
-                    .font(.system(size: 11, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-            }
-            .frame(maxHeight: 220)
-            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.primary.opacity(0.06)))
-            HStack {
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
-                }
-                .controlSize(.small)
-                Button("Clear") { model.controller.clearLog(alias: alias) }
-                    .controlSize(.small)
-                Spacer()
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.bottom, 6)
     }
 }
