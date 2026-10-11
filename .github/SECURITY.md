@@ -5,5 +5,6 @@ Report vulnerabilities privately through
 not in a public issue. You will get an answer within a week; fixes ship as a
 new release with a note in `CHANGELOG.md`.
 
-The app's trust model and the review checklist for security-relevant changes
-are in the `security` skill under `.agents/skills/` (linked from `.claude/skills/`).
+How the app handles trust, and what to check in a security-sensitive change,
+is in the `security` skill:
+[`.agents/skills/security/SKILL.md`](../.agents/skills/security/SKILL.md).
