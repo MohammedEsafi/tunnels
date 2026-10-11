@@ -295,21 +295,29 @@ final class AppModel {
         }
     }
 
+    /// Bring back what was on at the last quit. Machines are restored in
+    /// parallel so one that is unreachable cannot hold the others up.
     private func restoreState() async {
         let state = PersistedState.load()
         guard !state.onForwards.isEmpty else { return }
         isRestoring = true
         defer { isRestoring = false }
-        for entry in state.onForwards {
-            if let existing = controller.forwards.first(where: { $0.spec == entry.spec }) {
-                await controller.setForward(id: existing.id, on: true)
-            } else {
-                await controller.addAdHoc(entry.spec, name: entry.name)
+        let byMachine = Dictionary(grouping: state.onForwards, by: \.spec.machine)
+        await withTaskGroup(of: Void.self) { group in
+            for (_, entries) in byMachine {
+                group.addTask { @MainActor in
+                    for entry in entries {
+                        if let existing = self.controller.forwards.first(where: { $0.spec == entry.spec }) {
+                            await self.controller.setForward(id: existing.id, on: true)
+                        } else {
+                            await self.controller.addAdHoc(entry.spec, name: entry.name)
+                        }
+                    }
+                }
             }
         }
     }
 
-    /// Called from applicationShouldTerminate on the main thread; must not await.
     func prepareForQuitNow() {
         DebugLog.log("prepareForQuitNow: saving state and closing \(controller.machines.count) machine(s)")
         if persistStateOnQuit { PersistedState.capture(from: controller).save() }
