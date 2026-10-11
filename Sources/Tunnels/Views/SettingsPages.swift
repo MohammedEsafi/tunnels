@@ -173,10 +173,7 @@ private struct AutoHostRow: View {
     var body: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 6) {
-                    Text(host.name).font(.system(size: 13))
-                    Image(systemName: "infinity").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-                }
+                Text(host.name).font(.system(size: 13))
                 Text(host.excluded.isEmpty ? "all ports" : "all ports except \(host.excluded.sorted().map(String.init).joined(separator: ", "))")
                     .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
             }
