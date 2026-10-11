@@ -211,6 +211,8 @@ final class ReconnectorScheduleTests: XCTestCase {
         var reported = false
         reconnector.onReconnected = { _, _ in reported = true }
         runner.masterConnects = false
+        // A long first delay keeps the dropped state observable on a slow runner.
+        reconnector.delays = [1.0]
         runner.runningMasters.first?.simulateExit(code: 255)
         await waitUntil { self.controller.machineState("prod-db-01") == .dropped(attempt: 1) }
 
