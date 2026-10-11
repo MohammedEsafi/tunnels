@@ -85,12 +85,13 @@ Problems in the file are shown at the top of the popover with an Open button.
   can be removed with the × that shows on hover.
 - **All ports.** Type a machine name alone and pick the `∞ all ports` row.
   The app then watches that machine over the same connection, every five
-  seconds, and forwards every TCP listener it finds (1024 and up) to the same
-  local port, adding and removing forwards as services come and go. The host
-  shows an ∞ after its name; its port rows have no name. Switch a port off
-  to say "not this one", which is remembered. Switching the host off stops
-  watching; switching it on again asks whether you want all ports or only
-  the pinned ones. The × on the host row forgets the mode. Stored in the
+  seconds, and forwards every TCP listener it finds (1024 up to 32767, below
+  the ephemeral range) to the same local port, adding and removing forwards
+  as services come and go. The host shows an ∞ after its name; its port rows
+  have no name. Switch a port off to say "not this one", which is
+  remembered. Switching the host off stops watching; switching it on again
+  asks whether you want all ports or only the pinned ones, and answering
+  "Pinned only" ends all-ports mode for that host. Stored in the
   favourites file as a `[[host]]` entry with `all_ports = true` and an
   optional `exclude = [...]`.
 - **States.** Blue circle: active. Spinner: opening. Orange circle with ↻:

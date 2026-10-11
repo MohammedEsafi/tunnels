@@ -7,14 +7,18 @@ public enum PortDiscovery {
     /// macOS remotes answer through `netstat -an`.
     public static let command = "ss -ltnH 2>/dev/null || netstat -tln 2>/dev/null || cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || netstat -an 2>/dev/null"
 
-    /// Ports worth forwarding: every TCP listener at or above 1024, except
-    /// sshd's own. Loopback and wildcard binds alike, so localhost:<port>
-    /// means the same thing on both ends.
+    /// Ports a service would be deliberately started on: 1024 up to the start
+    /// of Linux's ephemeral range (32768), minus sshd's own. Loopback and
+    /// wildcard binds alike, so localhost:<port> means the same on both ends.
+    static func wanted(_ port: Int) -> Bool {
+        port >= 1024 && port < 32768 && port != 22
+    }
+
     public static func parse(_ output: String) -> Set<Int> {
         var ports: Set<Int> = []
         for line in output.split(separator: "\n") {
             if let port = procNetPort(line) {
-                if port >= 1024 && port != 22 { ports.insert(port) }
+                if wanted(port) { ports.insert(port) }
                 continue
             }
             let lower = line.lowercased()
@@ -26,7 +30,7 @@ public enum PortDiscovery {
                 let host = token[..<colon]
                 guard !host.isEmpty else { continue }
                 guard host.allSatisfy({ $0.isNumber || $0 == "." || $0 == ":" || $0 == "[" || $0 == "]" || $0 == "*" || $0 == "%" || $0.isLetter }) else { continue }
-                if port >= 1024 && port != 22 { ports.insert(port) }
+                if wanted(port) { ports.insert(port) }
                 break // first address-like token on the line is the local one
             }
         }

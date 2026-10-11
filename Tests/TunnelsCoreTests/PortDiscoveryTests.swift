@@ -10,6 +10,7 @@ final class PortDiscoveryTests: XCTestCase {
         LISTEN 0      4096           [::1]:11434          [::]:*
         LISTEN 0      4096               *:5173              *:*
         LISTEN 0      50     127.0.0.53%lo:53          0.0.0.0:*
+        LISTEN 0      1          127.0.0.1:43155       0.0.0.0:*
         """
         XCTAssertEqual(PortDiscovery.parse(ss), [3000, 8080, 11434, 5173])
     }

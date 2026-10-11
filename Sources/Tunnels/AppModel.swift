@@ -327,10 +327,16 @@ final class AppModel {
         controller.enableAutoHost(alias, excluded: excluded)
     }
 
-    /// The question's other answer: just the pinned forwards.
+    /// The question's other answer: just the pinned forwards. This also ends
+    /// all-ports mode for the host, so it behaves like any other from now on.
     func enablePinnedOnly(_ alias: String) {
         modeQuestion = nil
-        Task { await controller.setMachine(alias: alias, on: true) }
+        try? Favourites.removeHost(alias, from: favouritesURL)
+        reloadFavourites()
+        Task {
+            await controller.disableAutoHost(alias)
+            await controller.setMachine(alias: alias, on: true)
+        }
     }
 
     /// Switch on a host: ask when it is an all-ports host, otherwise just open.
