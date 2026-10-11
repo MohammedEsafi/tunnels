@@ -63,7 +63,8 @@ public final class ForwardController {
 
     public var activeCount: Int { forwards.filter { $0.state == .active || $0.state == .noService }.count }
     public var droppedCount: Int { forwards.filter { $0.state == .dropped }.count }
-    public var anyDesired: Bool { forwards.contains { $0.desiredOn } }
+    /// Anything to close: a forward that is wanted on, or a machine being watched.
+    public var anyDesired: Bool { forwards.contains { $0.desiredOn } || !autoHosts.isEmpty }
 
     // MARK: Changing the list
 
@@ -326,9 +327,10 @@ public final class ForwardController {
         }
     }
 
+    /// Turn every machine off: forwards, all-ports watching and the masters.
     public func closeAll() async {
-        for forward in forwards where forward.desiredOn {
-            await setForward(id: forward.id, on: false)
+        for alias in machines {
+            await setMachine(alias: alias, on: false)
         }
     }
 

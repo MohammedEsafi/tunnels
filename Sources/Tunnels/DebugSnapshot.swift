@@ -41,6 +41,7 @@ enum DebugSnapshot {
                     case "off": model.setMachine(fields[1], on: false)
                     case "on": model.setMachine(fields[1], on: true)
                     case "all": model.enableAllPorts(fields[1])
+                    case "closeall": model.closeAll()
                     default: break
                     }
                 }
