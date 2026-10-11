@@ -122,7 +122,6 @@ final class ControllerLifecycleTests: XCTestCase {
         let state = PersistedState.capture(from: controller)
 
         XCTAssertEqual(state.onForwards.map(\.spec), [postgres, ForwardSpec(machine: "box-b", localPort: 8080)])
-        XCTAssertEqual(state.onForwards.map(\.isFavourite), [true, false])
         XCTAssertEqual(state.autoHostsOn, ["gpu-box"])
     }
 }
@@ -166,7 +165,6 @@ final class ReconnectorScheduleTests: XCTestCase {
 
         XCTAssertEqual(seen.max(), 4)
         XCTAssertEqual(runner.launches.count, 5, "one original launch plus four attempts")
-        XCTAssertNil(reconnector.nextAttempt["prod-db-01"], "cleared after giving up")
     }
 
     func testSystemChangeIsDebouncedToOneHealthCheck() async {

@@ -23,7 +23,6 @@ final class AppModel {
     private var sshConfigHosts: [String] = []
     private var tailscaleHosts: [HostEntry] = []
     private(set) var external: [ExternalForward] = []
-    private(set) var isRestoring = false
     /// Debug runs turn this off so a throwaway session is not restored later.
     var persistStateOnQuit = true
 
@@ -40,7 +39,8 @@ final class AppModel {
     enum MenuPage { case main, settings, logs }
     var menuPage: MenuPage = .main
 
-    /// One notification when a machine gives up reconnecting.
+    /// Whether to post notifications: a machine giving up, coming back, or
+    /// getting an offset.
     var notifyOnGiveUp: Bool = UserDefaults.standard.object(forKey: "notifyOnGiveUp") as? Bool ?? true {
         didSet { UserDefaults.standard.set(notifyOnGiveUp, forKey: "notifyOnGiveUp") }
     }
@@ -64,11 +64,6 @@ final class AppModel {
     var quickOpenVisible = false
     /// The field's text lives here so the empty state can prefill "host:".
     var quickOpenText = ""
-
-    func prefillQuickOpen(host: String) {
-        quickOpenVisible = true
-        quickOpenText = host + ":"
-    }
 
     /// Open ~/.ssh/config in the default editor, creating it if needed.
     func openSSHConfig() {
@@ -290,10 +285,6 @@ final class AppModel {
         NSWorkspace.shared.open(favouritesURL)
     }
 
-    func revealFavouritesFile() {
-        NSWorkspace.shared.activateFileViewerSelecting([favouritesURL])
-    }
-
     // MARK: Opening forwards
 
     func open(_ favourite: Favourite) {
@@ -415,7 +406,7 @@ final class AppModel {
         controller.autoHosts.contains(alias)
     }
 
-    /// From the suggestion, or the question: watch every port on the machine.
+    /// From the suggestion or the host's menu: watch every port on the machine.
     /// Saying "all ports" explicitly is a fresh start for that machine: it
     /// forgets "not this one" choices and any offset. Both survive automatic
     /// reconnects and relaunches otherwise.
@@ -446,7 +437,7 @@ final class AppModel {
         controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: host?.offset)
     }
 
-    /// The question's other answer: freeze what all-ports mode had found.
+    /// Pinned Ports Only from the host's menu: freeze what all-ports mode had found.
     /// The ports open when the host was switched off, minus the ones closed,
     /// become ordinary pinned forwards, and watching stops for good.
     func enablePinnedOnly(_ alias: String) {
@@ -463,9 +454,10 @@ final class AppModel {
         }
     }
 
-    /// Switch on a host: an all-ports host resumes watching with what it had
-    /// (exclusions, offset); any other just reopens its pinned forwards. The
-    /// mode itself is changed from the host's right-click menu.
+    /// Switch on a host: an all-ports host resumes watching with its
+    /// exclusions but drops its offset, so plain numbers get another try; any
+    /// other host just reopens its pinned forwards. The mode itself is changed
+    /// from the host's right-click menu.
     func switchOn(_ alias: String) {
         if isAutoHost(alias) {
             let host = autoHosts.first { $0.name == alias }
@@ -518,8 +510,6 @@ final class AppModel {
     private func restoreState() async {
         let state = PersistedState.load()
         guard !state.onForwards.isEmpty || !state.autoHostsOn.isEmpty else { return }
-        isRestoring = true
-        defer { isRestoring = false }
         for alias in state.autoHostsOn where isAutoHost(alias) {
             resumeAllPorts(alias)
         }
@@ -545,14 +535,6 @@ final class AppModel {
         for alias in controller.machines { reconnector.cancel(alias) }
         controller.shutdownNow()
         DebugLog.log("prepareForQuitNow: done")
-    }
-
-    func prepareForQuit() async {
-        DebugLog.log("prepareForQuit: saving state and closing \(controller.machines.count) machine(s)")
-        if persistStateOnQuit { PersistedState.capture(from: controller).save() }
-        for alias in controller.machines { reconnector.cancel(alias) }
-        await controller.shutdown()
-        DebugLog.log("prepareForQuit: done")
     }
 
     // MARK: Login item

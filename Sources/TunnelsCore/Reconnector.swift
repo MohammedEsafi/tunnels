@@ -1,9 +1,7 @@
 import Foundation
-import Observation
 
 /// Brings dropped machines back with backoff, and reacts to wake and network
 /// changes. Owns no ssh state; it only drives `ForwardController`.
-@Observable
 @MainActor
 public final class Reconnector {
     public var budget = 5
@@ -18,9 +16,6 @@ public final class Reconnector {
     public var noticeAfter: TimeInterval = 10
 
     private var droppedSince: [String: Date] = [:]
-
-    /// When the next attempt for a machine is due, for the "Retrying in" text.
-    public private(set) var nextAttempt: [String: Date] = [:]
 
     private let controller: ForwardController
     private var loops: [String: Task<Void, Never>] = [:]
@@ -45,7 +40,6 @@ public final class Reconnector {
     /// Skip the wait and try now. If that fails the loop starts over.
     public func retryNow(_ alias: String, userInitiated: Bool = false) {
         loops[alias]?.cancel()
-        nextAttempt[alias] = nil
         if userInitiated { droppedSince[alias] = nil }
         loops[alias] = Task { [weak self] in
             guard let self else { return }
@@ -96,21 +90,17 @@ public final class Reconnector {
     public func cancel(_ alias: String) {
         loops[alias]?.cancel()
         loops[alias] = nil
-        nextAttempt[alias] = nil
         droppedSince[alias] = nil
     }
 
     private func loop(_ alias: String) async {
         var lastReason = "Connection dropped"
-        defer { nextAttempt[alias] = nil }
         for attempt in 1...max(budget, 1) {
             guard controller.isWanted(alias) else { return }
             controller.markDropped(alias: alias, attempt: attempt)
             let delay = delays.isEmpty ? 0 : delays[min(attempt - 1, delays.count - 1)]
-            nextAttempt[alias] = Date().addingTimeInterval(delay)
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             if Task.isCancelled { return }
-            nextAttempt[alias] = nil
             await controller.retry(alias: alias)
             if Task.isCancelled { return }
             if controller.machineState(alias) == .connected {

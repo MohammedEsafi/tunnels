@@ -1,16 +1,5 @@
 import Foundation
 
-/// A machine is a Host alias from ~/.ssh/config. The app never stores
-/// hostnames, users or keys; ssh resolves the alias itself.
-public struct Machine: Identifiable, Hashable, Sendable {
-    public var alias: String
-    public var id: String { alias }
-
-    public init(alias: String) {
-        self.alias = alias
-    }
-}
-
 /// Connection state of the per-machine master connection.
 public enum MachineState: Hashable, Sendable {
     case disconnected

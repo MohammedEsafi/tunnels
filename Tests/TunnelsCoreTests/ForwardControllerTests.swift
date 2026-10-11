@@ -15,7 +15,7 @@ final class ForwardControllerTests: XCTestCase {
         socketDir = FileManager.default.temporaryDirectory.appendingPathComponent("tunnels-tests-\(UUID().uuidString)")
         controller = ForwardController(runner: runner, socketDirectory: socketDir)
         controller.localPortProbe = { _ in false }
-        controller.setFavourites([(postgres, "postgres"), (redis, "redis")])
+        controller.setFavourites([Favourite(name: "postgres", spec: postgres), Favourite(name: "redis", spec: redis)])
     }
 
     override func tearDown() async throws {
@@ -43,7 +43,7 @@ final class ForwardControllerTests: XCTestCase {
 
         XCTAssertEqual(controller.machineState("prod-db-01"), .connected)
         XCTAssertEqual(controller.forwards.first { $0.spec == postgres }?.state, .active)
-        XCTAssertEqual(controller.activeCount, 1)
+        XCTAssertEqual(controller.forwards.filter { $0.state == .active || $0.state == .noService }.count, 1)
     }
 
     func testSecondForwardReusesMaster() async {
@@ -52,7 +52,7 @@ final class ForwardControllerTests: XCTestCase {
 
         XCTAssertEqual(runner.launches.count, 1)
         XCTAssertEqual(runner.calls(containing: "forward").count, 2)
-        XCTAssertEqual(controller.activeCount, 2)
+        XCTAssertEqual(controller.forwards.filter { $0.state == .active || $0.state == .noService }.count, 2)
     }
 
     func testForwardFailureMarksOnlyThatForward() async {
@@ -101,14 +101,14 @@ final class ForwardControllerTests: XCTestCase {
 
         XCTAssertEqual(droppedAlias, "prod-db-01")
         XCTAssertEqual(controller.machineState("prod-db-01"), .dropped(attempt: 1))
-        XCTAssertEqual(controller.droppedCount, 2)
+        XCTAssertEqual(controller.forwards.filter { $0.state == .dropped }.count, 2)
         XCTAssertTrue(controller.forwards.allSatisfy { $0.desiredOn })
 
         await controller.retry(alias: "prod-db-01")
 
         XCTAssertEqual(runner.launches.count, 2)
         XCTAssertEqual(controller.machineState("prod-db-01"), .connected)
-        XCTAssertEqual(controller.activeCount, 2)
+        XCTAssertEqual(controller.forwards.filter { $0.state == .active || $0.state == .noService }.count, 2)
     }
 
     func testMasterStartFailureMarksMachineFailed() async {
@@ -146,14 +146,14 @@ final class ForwardControllerTests: XCTestCase {
 
     func testRunningForwardSurvivesLosingFavouriteStatus() async {
         await controller.setForward(id: id(postgres), on: true)
-        controller.setFavourites([(redis, "redis")])
+        controller.setFavourites([Favourite(name: "redis", spec: redis)])
 
         let kept = controller.forwards.first { $0.spec == postgres }
         XCTAssertNotNil(kept)
         XCTAssertEqual(kept?.isFavourite, false)
         XCTAssertEqual(kept?.state, .active)
 
-        controller.setFavourites([(redis, "redis"), (postgres, "pg")])
+        controller.setFavourites([Favourite(name: "redis", spec: redis), Favourite(name: "pg", spec: postgres)])
         let again = controller.forwards.first { $0.spec == postgres }
         XCTAssertEqual(again?.isFavourite, true)
         XCTAssertEqual(again?.name, "pg")
@@ -171,7 +171,7 @@ final class ForwardControllerTests: XCTestCase {
 
         XCTAssertEqual(controller.forwards.first { $0.spec == postgres }?.state, .active)
         XCTAssertEqual(controller.forwards.first { $0.spec == redis }?.state, .noService)
-        XCTAssertEqual(controller.activeCount, 2)
+        XCTAssertEqual(controller.forwards.filter { $0.state == .active || $0.state == .noService }.count, 2)
 
         listeners = "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:6379 0.0.0.0:*"
         await controller.healthCheck()

@@ -1,15 +1,14 @@
 import SwiftUI
 import TunnelsCore
 
-/// One machine: a bold row with its switch, then its forwards. State shows as
-/// a small dot; the reason and countdown appear on hover.
+/// One machine: a bold row with its switch, then its forwards and any
+/// started outside the app.
 struct MachineSection: View {
     @Environment(AppModel.self) private var model
     let alias: String
 
     private var forwards: [Forward] { model.controller.forwards(on: alias) }
     private var external: [ExternalForward] { model.external(on: alias) }
-    private var state: MachineState { model.controller.machineState(alias) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
