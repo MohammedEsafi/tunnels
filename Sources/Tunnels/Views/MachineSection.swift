@@ -85,6 +85,9 @@ struct MachineSection: View {
 
 }
 
+/// A forward the app found running outside it: the same arrows as any row,
+/// but in a hollow circle because the app does not own it. No switch; Stop
+/// is in the right-click menu and the accessibility action.
 struct ExternalRow: View {
     @Environment(AppModel.self) private var model
     let forward: ExternalForward
@@ -92,19 +95,21 @@ struct ExternalRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            RowIcon(symbol: "terminal")
+            ZStack {
+                Circle().strokeBorder(Color.primary.opacity(0.35), lineWidth: 1.5)
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.primary.opacity(0.55))
+            }
+            .frame(width: 22, height: 22)
+            .help("Started outside Tunnels · pid \(String(forward.pid))")
+            .accessibilityHidden(true)
             Text(forward.spec.isLoopbackRemote ? String(forward.spec.localPort) : forward.spec.remoteHost)
                 .font(.system(size: 13))
                 .monospacedDigit()
-            if hovering {
-                Text("Started outside Tunnels · pid \(String(forward.pid))")
-                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-            }
+                .foregroundStyle(Color.primary.opacity(0.75))
             Spacer(minLength: 4)
-            if hovering {
-                Button("Stop") { model.stopExternal(forward) }
-                    .controlSize(.small)
-            } else if forward.spec.localPort != forward.spec.remotePort {
+            if forward.spec.localPort != forward.spec.remotePort {
                 PortColumn(spec: forward.spec)
             }
         }
@@ -112,7 +117,6 @@ struct ExternalRow: View {
         .frame(height: 32)
         .background(RowHighlight(on: hovering))
         .onHover { hovering = $0 }
-        // Stop is a hover control for the mouse; the menu and the action reach it from the keyboard and VoiceOver.
         .contextMenu { Button("Stop") { model.stopExternal(forward) } }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(forward.spec.portLabel) started outside Tunnels, process \(String(forward.pid))")

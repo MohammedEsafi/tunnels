@@ -53,7 +53,7 @@ that you did.
 | Red circle with ↻ | this forward failed while the connection is fine | click to retry it |
 | Orange circle, tooltip "Nothing listening on host:port" | open, but nothing serves the remote port yet | start the service; the row turns blue within 30 s |
 | Grey circle | off | switch it on |
-| Terminal icon | an `ssh -L` started outside the app | hover or right-click for Stop; never adopted |
+| Hollow circle, no switch | an `ssh -L` started outside the app; the circle's tooltip says so | right-click for Stop; never adopted |
 
 No words on rows. The full ssh output is under Settings › Connection Logs.
 The port column shows the local port, and `28080 → 8080` only when the remote
