@@ -111,9 +111,7 @@ final class KnownDefectsTests: XCTestCase {
         gate.open()
         try? await Task.sleep(nanoseconds: 200_000_000)
 
-        XCTExpectFailure("P0-8: tryPlain writes through a stale index into whatever row sits there now") {
-            XCTAssertTrue(controller.forwards.contains { $0.spec == third }, "\(controller.forwards.map(\.spec))")
-        }
+        XCTAssertTrue(controller.forwards.contains { $0.spec == third }, "\(controller.forwards.map(\.spec))")
     }
 
     // P1-1
