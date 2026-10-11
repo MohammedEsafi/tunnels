@@ -50,7 +50,7 @@ public final class ForwardController {
         machineStates[alias] ?? .disconnected
     }
 
-    public var activeCount: Int { forwards.filter { $0.state == .active }.count }
+    public var activeCount: Int { forwards.filter { $0.state == .active || $0.state == .noService }.count }
     public var droppedCount: Int { forwards.filter { $0.state == .dropped }.count }
     public var anyDesired: Bool { forwards.contains { $0.desiredOn } }
 
@@ -170,11 +170,15 @@ public final class ForwardController {
             machineStates[alias] = .failed(reason: reason)
             return
         }
-        guard let output = try? await master.run(PortDiscovery.command) else { return }
+        guard let output = try? await master.run(PortDiscovery.command) else {
+            appendLog(alias, "scan: could not list ports")
+            return
+        }
         let excluded = autoExcluded[alias] ?? []
         let pinnedLocal = Set(forwards(on: alias).filter { !$0.isDiscovered }.map(\.spec.localPort))
         let wanted = PortDiscovery.parse(output).subtracting(excluded).subtracting(pinnedLocal)
         let current = forwards(on: alias).filter(\.isDiscovered)
+        appendLog(alias, "scan: listening \(PortDiscovery.parse(output).sorted()) excluded \(excluded.sorted()) have \(current.map(\.spec.localPort).sorted())")
 
         for forward in current where !wanted.contains(forward.spec.localPort) {
             await close(forward)
@@ -246,13 +250,34 @@ public final class ForwardController {
     }
 
     /// Ask every connected master whether it still answers. A silent one is
-    /// treated like an exit so the reconnector takes over.
+    /// treated like an exit so the reconnector takes over. Connected ones
+    /// also get their pinned forwards' remote ports probed.
     public func healthCheck() async {
         for (alias, master) in masters where machineState(alias) == .connected {
             if await !master.check() {
                 await master.stop()
                 await masterDidExit(alias: alias, code: -1, output: "health check failed")
+            } else {
+                await probe(alias: alias)
             }
+        }
+    }
+
+    /// Does anything listen on the remote end of each pinned forward? A
+    /// forward with no service behind it is open but useless, so mark it.
+    /// Remote hosts other than the machine itself cannot be checked this way.
+    public func probe(alias: String) async {
+        guard let master = masters[alias] else { return }
+        let candidates = forwards(on: alias).filter {
+            !$0.isDiscovered && ($0.state == .active || $0.state == .noService)
+                && ($0.spec.remoteHost == "localhost" || $0.spec.remoteHost == "127.0.0.1")
+        }
+        guard !candidates.isEmpty, let output = try? await master.run(PortDiscovery.command) else { return }
+        let listening = PortDiscovery.listeners(output)
+        guard !listening.isEmpty else { return } // no tool answered; say nothing
+        for forward in candidates {
+            let has = listening.contains(forward.spec.remotePort)
+            update(forward.id) { $0.state = has ? .active : .noService }
         }
     }
 
@@ -325,6 +350,7 @@ public final class ForwardController {
             try await master.addForward(forward.spec)
             update(forward.id) { $0.state = .active }
             appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) open")
+            if !forward.isDiscovered { await probe(alias: forward.spec.machine) }
         } catch {
             let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
             update(forward.id) { $0.state = .error(reason) }

@@ -157,6 +157,30 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(again?.state, .active)
     }
 
+    func testProbeMarksForwardsWithNothingBehindThem() async {
+        var listeners = "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*"
+        runner.script = { args in
+            if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            return ProcessResult(exitCode: 0)
+        }
+        await controller.setForward(id: id(postgres), on: true)
+        await controller.setForward(id: id(redis), on: true)
+
+        XCTAssertEqual(controller.forwards.first { $0.spec == postgres }?.state, .active)
+        XCTAssertEqual(controller.forwards.first { $0.spec == redis }?.state, .noService)
+        XCTAssertEqual(controller.activeCount, 2)
+
+        listeners = "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:6379 0.0.0.0:*"
+        await controller.healthCheck()
+        XCTAssertEqual(controller.forwards.first { $0.spec == redis }?.state, .active)
+
+        // No tool answered on the remote: leave states alone.
+        listeners = ""
+        await controller.healthCheck()
+        XCTAssertEqual(controller.forwards.first { $0.spec == redis }?.state, .active)
+    }
+
     func testAllPortsDiscoversAddsAndRemoves() async {
         var listeners = "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:5173 0.0.0.0:*\nLISTEN 0 1 0.0.0.0:22 0.0.0.0:*"
         runner.script = { args in
@@ -194,6 +218,39 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(runner.calls(containing: "exit").count, 1)
     }
 
+    func testAllPortsRemoveEachThenDisableAndEnableAgain() async {
+        let listeners = "LISTEN 0 1 127.0.0.1:7777 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8080 0.0.0.0:*"
+        runner.script = { args in
+            if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            return ProcessResult(exitCode: 0)
+        }
+        controller.discoveryInterval = 3600
+        controller.enableAutoHost("box-b")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline, controller.forwards(on: "box-b").count < 2 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.forwards(on: "box-b").map(\.spec.localPort), [7777, 8080])
+
+        // × on each discovered row
+        await controller.excludePort(7777, on: "box-b")
+        await controller.excludePort(8080, on: "box-b")
+        XCTAssertEqual(controller.forwards(on: "box-b"), [])
+        XCTAssertEqual(controller.autoExcluded["box-b"], [7777, 8080])
+
+        // host switch off, then on again choosing all ports (the app passes the
+        // exclusions it has on file, here none)
+        await controller.setMachine(alias: "box-b", on: false)
+        XCTAssertFalse(controller.autoHosts.contains("box-b"))
+        controller.enableAutoHost("box-b", excluded: [])
+        let deadline2 = Date().addingTimeInterval(5)
+        while Date() < deadline2, controller.forwards(on: "box-b").count < 2 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.forwards(on: "box-b").map(\.spec.localPort), [7777, 8080], "ports should come back after re-enabling")
+    }
+
     func testSocketPathIsShortAndStable() {
         let dir = URL(fileURLWithPath: "/Users/someone/Library/Application Support/Tunnels/sockets")
         let a = SSHMaster.socketPath(for: "a-very-long-host-alias.example.internal", in: dir)
@@ -209,6 +266,7 @@ final class SSHErrorTextTests: XCTestCase {
         XCTAssertEqual(SSHErrorText.humanize("x@y: Permission denied (publickey,password)."), "No usable key in the agent. Run ssh-add.")
         XCTAssertEqual(SSHErrorText.humanize("ssh: Could not resolve hostname nope: nodename nor servname provided"), "Unknown host")
         XCTAssertEqual(SSHErrorText.humanize("bind [127.0.0.1]:5432: Address already in use"), "Local port in use")
+        XCTAssertEqual(SSHErrorText.humanize("mux_client_forward: forwarding request failed: Port forwarding failed\nmuxclient: master forward request failed"), "Local port in use")
         XCTAssertEqual(SSHErrorText.humanize("ssh: connect to host 10.0.0.9 port 22: Connection refused"), "Host unreachable")
         XCTAssertEqual(SSHErrorText.humanize("something odd\nssh: last line here"), "last line here")
     }

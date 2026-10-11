@@ -25,6 +25,10 @@ struct ForwardRow: View {
                     .controlSize(.small)
                     .frame(width: 22, height: 22)
                     .accessibilityLabel("Opening")
+            } else if forward.state == .noService {
+                RowIcon(symbol: symbol, tint: .orange)
+                    .help("Nothing listening on \(forward.spec.machine):\(forward.spec.remotePort)")
+                    .accessibilityLabel("Nothing listening on \(forward.spec.machine) port \(forward.spec.remotePort)")
             } else {
                 RowIcon(symbol: symbol, tint: tint)
             }
@@ -99,7 +103,7 @@ struct ForwardRow: View {
     private var tint: Color? {
         switch forward.state {
         case .active: return .accentColor
-        case .dropped: return .orange
+        case .noService, .dropped: return .orange
         case .error: return .red
         case .pending, .off: return nil
         }

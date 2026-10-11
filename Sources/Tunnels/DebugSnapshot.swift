@@ -22,9 +22,33 @@ enum DebugSnapshot {
                 }
             }
         }
+        // TUNNELS_SNAPSHOT_SCRIPT="exclude:box-b:7777@8,off:box-b@12,on:box-b@15,all:box-b@16"
+        if let script = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_SCRIPT"] {
+            for step in script.split(separator: ",") {
+                let parts = step.split(separator: "@")
+                guard parts.count == 2, let at = Double(parts[1]) else { continue }
+                let fields = parts[0].split(separator: ":").map(String.init)
+                DispatchQueue.main.asyncAfter(deadline: .now() + at) {
+                    let model = AppModel.shared
+                    DebugLog.log("script: \(step)")
+                    switch fields.first {
+                    case "exclude":
+                        if fields.count == 3, let port = Int(fields[2]),
+                           let forward = model.controller.forwards.first(where: { $0.spec.machine == fields[1] && $0.spec.localPort == port }) {
+                            model.excludePort(forward)
+                        } else { DebugLog.log("script: no such forward") }
+                    case "off": model.setMachine(fields[1], on: false)
+                    case "on": model.setMachine(fields[1], on: true)
+                    case "all": model.enableAllPorts(fields[1])
+                    default: break
+                    }
+                }
+            }
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             let model = AppModel.shared
-            DebugLog.log("snapshot: forwards=\(model.controller.forwards.count) machines=\(model.controller.machines) external=\(model.external.count) states=\(model.controller.machineStates)")
+            DebugLog.log("snapshot: forwards=\(model.controller.forwards.map { "\($0.spec.machine):\($0.spec.localPort) \($0.state) disc=\($0.isDiscovered)" }) machines=\(model.controller.machines) auto=\(model.controller.autoHosts) excluded=\(model.controller.autoExcluded) states=\(model.controller.machineStates) question=\(String(describing: model.modeQuestion))")
+            for (alias, lines) in model.controller.logs { DebugLog.log("log \(alias):\n  " + lines.joined(separator: "\n  ")) }
             let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             statusItem.openForSnapshot(topLeft: NSPoint(x: 40, y: screen.height - 60))
             switch ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_PAGE"] {

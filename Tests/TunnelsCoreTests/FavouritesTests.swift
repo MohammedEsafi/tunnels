@@ -177,6 +177,13 @@ final class FavouritesTests: XCTestCase {
         XCTAssertTrue(try Favourites.setExcluded([3000], forHost: "echo", in: url))
         XCTAssertTrue(try Favourites.setExcluded([], forHost: "gpu", in: url))
         XCTAssertEqual(Favourites.loadHosts(from: url), [AutoHost(name: "echo", excluded: [3000]), AutoHost(name: "gpu")])
+        // Repeated edits must not grow the file with blank lines.
+        for port in [3001, 3002, 3003] {
+            XCTAssertTrue(try Favourites.setExcluded([3000, port], forHost: "echo", in: url))
+        }
+        let text = try String(contentsOf: url, encoding: .utf8)
+        XCTAssertFalse(text.contains("\n\n\n"), "blank lines accumulated:\n\(text)")
+        XCTAssertTrue(text.contains("all_ports = true\nexclude = [3000, 3003]\n"))
 
         XCTAssertTrue(try Favourites.removeHost("echo", from: url))
         XCTAssertFalse(try Favourites.removeHost("nope", from: url))
