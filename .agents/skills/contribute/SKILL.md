@@ -1,5 +1,5 @@
 ---
-name: tunnels-contribute
+name: contribute
 description: Make a change to Tunnels the way the project expects: branch, implement within the design rules, test, write a conventional commit, update the changelog and open a pull request. Use when someone wants to add a feature, fix a bug, or push a change, and for any question about commit or pull request conventions.
 ---
 
@@ -12,9 +12,9 @@ a framework or a layer needs a discussion first.
 ## Steps for a change
 
 1. **Start from main**, up to date: `git switch -c <type>/<short-name>`.
-2. **Read the rules** in the `tunnels-design` skill before touching
+2. **Read the rules** in the `design` skill before touching
    `Sources/TunnelsCore` or `Sources/Tunnels/App`.
-3. **Write the failing test first** for a bug (see the `tunnels-test` skill).
+3. **Write the failing test first** for a bug (see the `testing` skill).
    A change in `TunnelsCore` always comes with a test using `FakeRunner`.
 4. **Implement** the smallest change that does the job. Comments explain
    intent and constraints, never restate the code.
@@ -22,8 +22,8 @@ a framework or a layer needs a discussion first.
    `swift build -Xswiftc -warnings-as-errors`, `swift test`,
    `xcrun swift-format lint --strict --recursive Sources Tests`.
 6. **Try it** against the Docker lab if the user can see the change, and add
-   a drill row in the `tunnels-test` skill if the behaviour is new.
-7. **Document**: a user-visible change updates the `tunnels-usage` skill;
+   a drill row in the `testing` skill if the behaviour is new.
+7. **Document**: a user-visible change updates the `usage` skill;
    every user-visible change gets a line under Unreleased in `CHANGELOG.md`
    (Security, Fixed, Added or Changed).
 8. **Commit** in the format below, one logical change per commit.

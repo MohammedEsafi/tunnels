@@ -1,5 +1,5 @@
 ---
-name: tunnels-test
+name: testing
 description: Verify a change to Tunnels: run the build, tests and lint the way CI does, write a core test with the fake ssh runner and its gate, avoid timing flakes, and run the manual drills that cover the app target. Use before claiming any change works, when adding a test, or when reproducing a bug.
 ---
 
@@ -68,7 +68,7 @@ timing. `swift test --filter <SuiteName>` runs one suite.
 ## Manual drills for the app target
 
 The app has no unit tests; the drills cover it. Run the debug bundle with
-`TUNNELS_DEBUG=1` and the Docker lab up (see the `tunnels-dev` skill).
+`TUNNELS_DEBUG=1` and the Docker lab up (see the `develop` skill).
 
 | Drill | Expected |
 |---|---|
@@ -92,5 +92,5 @@ The app has no unit tests; the drills cover it. Run the debug bundle with
 | Open at login from `/Applications` | the toggle stays on after a logout; a pending approval shows a hint |
 | Deny the notification permission | a hint under the Notify row; nothing is posted |
 
-For a scripted check, use the snapshot harness from the `tunnels-dev` skill
+For a scripted check, use the snapshot harness from the `develop` skill
 and grep its `snapshot:` line.

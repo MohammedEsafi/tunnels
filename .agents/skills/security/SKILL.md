@@ -1,5 +1,5 @@
 ---
-name: tunnels-security
+name: security
 description: The trust model of Tunnels and the checks to run on a change that touches ssh arguments, local ports, the favourites file, process listing or signals, plus how to report a vulnerability. Use when reviewing such a change, assessing a security report, or answering "is this safe" questions.
 ---
 

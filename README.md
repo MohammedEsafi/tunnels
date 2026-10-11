@@ -49,13 +49,13 @@ are written for people too.
 
 | Skill | Ask it for |
 |---|---|
-| [tunnels-usage](.agents/skills/tunnels-usage/SKILL.md) | how to use the app: every menu item, all-ports and offsets, reconnection, files |
-| [tunnels-dev](.agents/skills/tunnels-dev/SKILL.md) | building and running from source, the Docker lab, logging, the snapshot harness |
-| [tunnels-test](.agents/skills/tunnels-test/SKILL.md) | verifying a change: the CI checks, writing a core test, the manual drills |
-| [tunnels-contribute](.agents/skills/tunnels-contribute/SKILL.md) | making and pushing a change: steps, commit format, house rules |
-| [tunnels-design](.agents/skills/tunnels-design/SKILL.md) | the decisions, module boundaries and ssh mechanics |
-| [tunnels-security](.agents/skills/tunnels-security/SKILL.md) | the trust model, the review checklist, reporting a vulnerability |
-| [tunnels-release](.agents/skills/tunnels-release/SKILL.md) | what CI does, tagging a version, what the release workflow publishes |
+| [usage](.agents/skills/usage/SKILL.md) | how to use the app: every menu item, all-ports and offsets, reconnection, files |
+| [develop](.agents/skills/develop/SKILL.md) | building and running from source, the Docker lab, logging, the snapshot harness |
+| [testing](.agents/skills/testing/SKILL.md) | verifying a change: the CI checks, writing a core test, the manual drills |
+| [contribute](.agents/skills/contribute/SKILL.md) | making and pushing a change: steps, commit format, house rules |
+| [design](.agents/skills/design/SKILL.md) | the decisions, module boundaries and ssh mechanics |
+| [security](.agents/skills/security/SKILL.md) | the trust model, the review checklist, reporting a vulnerability |
+| [release](.agents/skills/release/SKILL.md) | what CI does, tagging a version, what the release workflow publishes |
 
 [CHANGELOG.md](CHANGELOG.md) records what changed in each version.
 
