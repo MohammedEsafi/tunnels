@@ -190,6 +190,29 @@ final class KnownDefectsTests: XCTestCase {
         XCTAssertEqual(controller.machineState("gpu-box"), .connected)
     }
 
+    // Review finding 2: tryPlain rewrote the row and marked it active after the
+    // user had switched it off while the plain add was in flight.
+    func testPlainRetrySwitchedOffMidAddStaysOff() async {
+        let moved = ForwardSpec(machine: "prod-db-01", localPort: 15432, remotePort: 5432)
+        controller.setFavourites([Favourite(name: "pg", spec: moved, movedByApp: true)])
+        let id = controller.forwards[0].id
+        let gate = Gate()
+        runner.gate = { args in if args.contains("127.0.0.1:5432:localhost:5432") { await gate.wait() } }
+        Task { await self.controller.setMachine(alias: "prod-db-01", on: true) }
+        await waitUntil { gate.arrivals == 1 }
+
+        await controller.setForward(id: id, on: false)
+        gate.open()
+        await waitUntil { self.runner.completed(containing: "forward").count == 1 }
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        let row = controller.forwards[0]
+        XCTAssertFalse(row.desiredOn)
+        XCTAssertEqual(row.state, .off)
+        XCTAssertEqual(row.spec, moved, "a cancelled retry does not change the row's number")
+        XCTAssertTrue(runner.runningMasters.isEmpty)
+    }
+
     // P1-5
     func testRemoteRefusalIsNotReportedAsLocalPortInUse() {
         XCTAssertEqual(SSHErrorText.humanize("remote port forwarding failed for listen port 80"), "Remote end refused the forward")

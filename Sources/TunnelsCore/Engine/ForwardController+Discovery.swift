@@ -189,9 +189,16 @@ extension ForwardController {
         }
         update(forward.id) { $0.state = .pending }
         if (try? await master.addForward(plain)) != nil {
-            // The row may be gone by now; rows are found by id, never by position.
-            guard forwards.contains(where: { $0.id == forward.id }) else {
+            // The row may be gone, or switched off, by now; rows are found by
+            // id, never by position, and an unwanted forward comes down again.
+            guard let row = forwards.first(where: { $0.id == forward.id }), row.desiredOn else {
                 try? await master.cancelForward(plain)
+                update(forward.id) { $0.state = .off }
+                if !isWanted(alias) {
+                    await master.stop()
+                    masters[alias] = nil
+                    machineStates[alias] = .disconnected
+                }
                 return
             }
             update(forward.id) {

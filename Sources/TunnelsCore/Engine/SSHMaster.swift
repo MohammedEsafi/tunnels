@@ -70,7 +70,10 @@ public actor SSHMaster {
             if let code = exitCode {
                 throw SSHError.masterExited(lastOutput.isEmpty ? "ssh exited with status \(code)" : lastOutput)
             }
-            if await check() { return }
+            if await check() {
+                if Task.isCancelled { break }
+                return
+            }
             do {
                 try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
             } catch {
@@ -79,6 +82,7 @@ public actor SSHMaster {
             }
         }
         launched.terminate()
+        if Task.isCancelled { throw CancellationError() }
         throw SSHError.timeout
     }
 
