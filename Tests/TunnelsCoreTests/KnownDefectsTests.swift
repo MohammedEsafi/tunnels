@@ -115,20 +115,40 @@ final class KnownDefectsTests: XCTestCase {
         XCTAssertTrue(controller.forwards.contains { $0.spec == third }, "\(controller.forwards.map(\.spec))")
     }
 
-    // P1-1
-    func testDiscoveredRowsRecoverWhenTheScanReconnects() async {
+    // P1-1 and P1-2: after a drop the reconnector brings a watched machine back; scans wait for it.
+    func testDiscoveredRowsComeBackThroughTheReconnectorAndScansDoNotRace() async {
         runner.script = { args in args.contains("--") ? ProcessResult(exitCode: 0, stdout: self.listing([3000])) : nil }
         controller.enableAutoHost("gpu-box")
         await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
+        let reconnector = Reconnector(controller: controller)
+        reconnector.delays = [0.2]
 
         runner.runningMasters.first?.simulateExit(code: 255)
         await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .dropped }
         await controller.scan("gpu-box")
+        XCTAssertEqual(runner.launches.count, 1, "a scan while dropped does not reconnect on its own")
 
+        await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
+        XCTAssertEqual(runner.launches.count, 2)
         XCTAssertEqual(controller.machineState("gpu-box"), .connected)
-        XCTExpectFailure("P1-1: scan reopens .error rows but not .dropped ones") {
-            XCTAssertEqual(controller.forwards(on: "gpu-box").first?.state, .active)
-        }
+    }
+
+    func testAWatchedMachineThatCannotConnectGoesThroughTheBackoffAndGivesUp() async {
+        let reconnector = Reconnector(controller: controller)
+        reconnector.delays = [0.02]
+        reconnector.budget = 2
+        var gaveUp: String?
+        reconnector.onGaveUp = { alias, _ in gaveUp = alias }
+        runner.masterExitsImmediately = (255, "ssh: connect to host gpu-box port 22: Connection refused")
+
+        controller.enableAutoHost("gpu-box")
+        await waitUntil { gaveUp != nil }
+
+        XCTAssertEqual(controller.machineState("gpu-box"), .failed(reason: "Host unreachable"))
+        XCTAssertEqual(runner.launches.count, 3, "the first try plus two attempts, then nothing")
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        await controller.scan("gpu-box")
+        XCTAssertEqual(runner.launches.count, 3, "a failed machine is left to a manual retry")
     }
 
     // P1-5
