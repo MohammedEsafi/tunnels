@@ -89,6 +89,11 @@ final class StatusItemController {
     func open() {
         guard let button = statusItem.button, let buttonWindow = button.window else { return }
         let buttonRect = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        let screen = NSScreen.screens.first { $0.frame.contains(NSPoint(x: buttonRect.midX, y: buttonRect.midY)) } ?? NSScreen.main
+        if let visible = screen?.visibleFrame {
+            // Header, field, footer and gaps take about 180 points around the list.
+            model.maxListHeight = min(620, max(160, buttonRect.minY - visible.minY - 180))
+        }
         button.highlight(true)
         model.popoverVisible = true
         makePanel().show(below: buttonRect)

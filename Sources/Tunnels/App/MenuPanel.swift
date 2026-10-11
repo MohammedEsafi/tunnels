@@ -14,6 +14,8 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
     private var globalMonitor: Any?
     private var localMonitor: Any?
     private var anchorTopLeft: NSPoint = .zero
+    /// Room between the anchor and the bottom of the screen's visible area.
+    private var heightBudget: CGFloat = .infinity
     private let onClose: () -> Void
 
     init<Content: View>(rootView: Content, onClose: @escaping () -> Void) {
@@ -78,13 +80,14 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
         var x = buttonRect.midX - size.width / 2
         x = min(max(x, visible.minX + 8), visible.maxX - size.width - 8)
         let top = buttonRect.minY - MenuPanel.gapBelowMenuBar
+        heightBudget = top - visible.minY - 8
         show(topLeft: NSPoint(x: x, y: top))
     }
 
     func show(topLeft: NSPoint) {
         anchorTopLeft = topLeft
-        let size = hostingView.fittingSize
-        setFrame(NSRect(x: topLeft.x, y: topLeft.y - size.height, width: MenuPanel.width, height: size.height), display: false)
+        let height = min(hostingView.fittingSize.height, heightBudget)
+        setFrame(NSRect(x: topLeft.x, y: topLeft.y - height, width: MenuPanel.width, height: height), display: false)
         alphaValue = 0
         makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { context in
@@ -103,7 +106,7 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
 
     private func resize(to size: CGSize) {
         guard isVisible, size.height > 0 else { return }
-        let height = size.height
+        let height = min(size.height, heightBudget)
         let frame = NSRect(x: anchorTopLeft.x, y: anchorTopLeft.y - height, width: MenuPanel.width, height: height)
         if frame != self.frame { setFrame(frame, display: true) }
     }
