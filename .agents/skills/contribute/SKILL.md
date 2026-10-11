@@ -12,7 +12,7 @@ a framework or a layer needs a discussion first.
 ## Steps for a change
 
 1. **Start from main**, up to date: `git switch -c <type>/<short-name>`.
-2. **Read the rules** in the `design` skill before touching
+2. **Read the rules** in the `architecture` skill before touching
    `Sources/TunnelsCore` or `Sources/Tunnels/App`.
 3. **Write the failing test first** for a bug (see the `testing` skill).
    A change in `TunnelsCore` always comes with a test using `FakeRunner`.
@@ -23,7 +23,7 @@ a framework or a layer needs a discussion first.
    `xcrun swift-format lint --strict --recursive Sources Tests`.
 6. **Try it** against the Docker lab if the user can see the change, and add
    a drill row in the `testing` skill if the behaviour is new.
-7. **Document**: a user-visible change updates the `usage` skill;
+7. **Document**: a user-visible change updates the `manual` skill;
    every user-visible change gets a line under Unreleased in `CHANGELOG.md`
    (Security, Fixed, Added or Changed).
 8. **Commit** in the format below, one logical change per commit.

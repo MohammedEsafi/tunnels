@@ -1,9 +1,9 @@
 ---
-name: design
+name: architecture
 description: The decisions, module boundaries and ssh mechanics behind Tunnels, and where new code belongs. Use before changing TunnelsCore, the panel, reconnection, all-ports discovery or the build, so a change fits the design instead of working around it.
 ---
 
-# Tunnels design
+# Tunnels architecture
 
 Read this before touching the engine, the panel or the build. If a change
 conflicts with a rule here, raise the conflict before implementing.

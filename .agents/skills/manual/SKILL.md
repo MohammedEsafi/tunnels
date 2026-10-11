@@ -1,9 +1,9 @@
 ---
-name: usage
+name: manual
 description: Answer questions about using the Tunnels menu bar app: installing it, opening forwards, what the rows and circles mean, the right-click menus, all-ports mode and the offset rule, reconnection, notifications, and which files it writes. Use whenever someone asks how to do something in the app, why it behaves a certain way, or where its data lives.
 ---
 
-# Tunnels usage
+# Tunnels manual
 
 You are answering for the app as it is in this repository. If a question is
 about a behaviour you cannot find below, read the code under
