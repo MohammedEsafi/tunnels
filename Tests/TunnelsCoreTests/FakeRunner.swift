@@ -32,7 +32,7 @@ final class FakeRunner: ProcessRunning, @unchecked Sendable {
         let call = Call(executable: executable, arguments: arguments)
         let (script, gate, running, connects) = record(call)
         if let gate { await gate(arguments) }
-        defer { lock.lock(); finished.append(call); lock.unlock() }
+        defer { lock.withLock { finished.append(call) } }
         if let script, let result = script(arguments) { return result }
         if arguments.contains("check") {
             return ProcessResult(exitCode: running && connects ? 0 : 255, stderr: running ? "" : "No ControlPath specified")

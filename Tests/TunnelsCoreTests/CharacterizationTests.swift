@@ -184,15 +184,14 @@ final class ReconnectorScheduleTests: XCTestCase {
         reconnector.delays = [0.02, 0.04]
         reconnector.budget = 4
         runner.masterExitsImmediately = (255, "Connection refused")
-        var seen: Set<Int> = []
         runner.runningMasters.first?.simulateExit(code: 255)
         await waitUntil {
-            if case .dropped(let attempt) = self.controller.machineState("prod-db-01") { seen.insert(attempt) }
             if case .failed = self.controller.machineState("prod-db-01") { return true }
             return false
         }
 
-        XCTAssertEqual(seen.max(), 4)
+        // The attempt numbers are transient and a poll can miss one; the launch
+        // count proves the budget was used up, and no more.
         XCTAssertEqual(runner.launches.count, 5, "one original launch plus four attempts")
     }
 

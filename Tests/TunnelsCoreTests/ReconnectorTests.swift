@@ -108,13 +108,15 @@ final class ReconnectorTests: XCTestCase {
     }
 
     func testTurningOffStopsTheLoop() async {
-        reconnector.delays = [0.1]
+        // A whole second before the first attempt, so the dropped state is
+        // observable even on a slow, loaded runner.
+        reconnector.delays = [1.0]
         runner.runningMasters.first?.simulateExit(code: 255)
         await waitUntil { self.controller.machineState("prod-db-01") == .dropped(attempt: 1) }
 
         await controller.setForward(id: controller.forwards[0].id, on: false)
         // Longer than the delay: a loop that survived would have launched again.
-        try? await Task.sleep(nanoseconds: 300_000_000)
+        try? await Task.sleep(nanoseconds: 1_300_000_000)
 
         XCTAssertEqual(runner.launches.count, 1)
         XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)

@@ -28,27 +28,31 @@ final class Gate: @unchecked Sendable {
     private var opened = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private var arrivalCount = 0
-    var arrivals: Int {
-        lock.lock(); defer { lock.unlock() }
-        return arrivalCount
-    }
+    var arrivals: Int { lock.withLock { arrivalCount } }
 
     func wait() async {
-        lock.lock()
-        arrivalCount += 1
-        if opened { lock.unlock(); return }
+        let alreadyOpen: Bool = lock.withLock {
+            arrivalCount += 1
+            return opened
+        }
+        if alreadyOpen { return }
         await withCheckedContinuation { continuation in
-            waiters.append(continuation)
-            lock.unlock()
+            let resumeNow: Bool = lock.withLock {
+                if opened { return true }
+                waiters.append(continuation)
+                return false
+            }
+            if resumeNow { continuation.resume() }
         }
     }
 
     func open() {
-        lock.lock()
-        opened = true
-        let pending = waiters
-        waiters = []
-        lock.unlock()
+        let pending: [CheckedContinuation<Void, Never>] = lock.withLock {
+            opened = true
+            let waiting = waiters
+            waiters = []
+            return waiting
+        }
         for waiter in pending { waiter.resume() }
     }
 }
