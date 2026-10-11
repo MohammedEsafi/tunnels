@@ -23,6 +23,9 @@ public final class ForwardController {
     public private(set) var autoHosts: Set<String> = []
     /// Ports not to forward, per auto host.
     public private(set) var autoExcluded: [String: Set<Int>] = [:]
+    /// What the last scan of each auto host found (minus exclusions), kept
+    /// after the host is switched off so "Pinned only" can freeze it.
+    public private(set) var lastDiscovered: [String: Set<Int>] = [:]
     /// How often an auto host is scanned.
     public var discoveryInterval: TimeInterval = 5
     private var discoveryLoops: [String: Task<Void, Never>] = [:]
@@ -146,6 +149,7 @@ public final class ForwardController {
     /// "Not this one": drop a discovered port and keep it dropped.
     public func excludePort(_ port: Int, on alias: String) async {
         autoExcluded[alias, default: []].insert(port)
+        lastDiscovered[alias]?.remove(port)
         for forward in forwards(on: alias) where forward.isDiscovered && forward.spec.localPort == port {
             await close(forward)
             forwards.removeAll { $0.id == forward.id }
@@ -177,6 +181,7 @@ public final class ForwardController {
         let excluded = autoExcluded[alias] ?? []
         let pinnedLocal = Set(forwards(on: alias).filter { !$0.isDiscovered }.map(\.spec.localPort))
         let wanted = PortDiscovery.parse(output).subtracting(excluded).subtracting(pinnedLocal)
+        lastDiscovered[alias] = wanted
         let current = forwards(on: alias).filter(\.isDiscovered)
         appendLog(alias, "scan: listening \(PortDiscovery.parse(output).sorted()) excluded \(excluded.sorted()) have \(current.map(\.spec.localPort).sorted())")
 

@@ -338,10 +338,16 @@ final class AppModel {
         controller.enableAutoHost(alias, excluded: excluded)
     }
 
-    /// The question's other answer: just the pinned forwards. This also ends
-    /// all-ports mode for the host, so it behaves like any other from now on.
+    /// The question's other answer: freeze what all-ports mode had found.
+    /// The ports open when the host was switched off, minus the ones closed,
+    /// become ordinary pinned forwards, and watching stops for good.
     func enablePinnedOnly(_ alias: String) {
         modeQuestion = nil
+        let pinnedAlready = Set(favourites.filter { $0.spec.machine == alias }.map(\.spec.localPort))
+        let frozen = (controller.lastDiscovered[alias] ?? []).subtracting(pinnedAlready)
+        for port in frozen.sorted() {
+            try? Favourites.add(Favourite(name: String(port), spec: ForwardSpec(machine: alias, localPort: port)), to: favouritesURL)
+        }
         try? Favourites.removeHost(alias, from: favouritesURL)
         reloadFavourites()
         Task {

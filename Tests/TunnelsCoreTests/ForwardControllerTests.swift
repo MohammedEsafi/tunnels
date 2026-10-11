@@ -212,7 +212,15 @@ final class ForwardControllerTests: XCTestCase {
         await controller.scan("gpu-box")
         XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
 
+        XCTAssertEqual(controller.lastDiscovered["gpu-box"], [])
+        listeners = "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:4000 0.0.0.0:*"
+        await controller.scan("gpu-box")
+        XCTAssertEqual(controller.lastDiscovered["gpu-box"], [3000, 4000])
+        await controller.excludePort(4000, on: "gpu-box")
+        XCTAssertEqual(controller.lastDiscovered["gpu-box"], [3000])
+
         await controller.disableAutoHost("gpu-box")
+        XCTAssertEqual(controller.lastDiscovered["gpu-box"], [3000], "kept after switching off, for Pinned only")
         XCTAssertFalse(controller.autoHosts.contains("gpu-box"))
         XCTAssertEqual(controller.machineState("gpu-box"), .disconnected)
         XCTAssertEqual(runner.calls(containing: "exit").count, 1)
