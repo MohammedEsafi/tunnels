@@ -20,7 +20,7 @@ enum DebugSnapshot {
                 for forward in model.controller.forwards { model.setForward(forward, on: true) }
             }
         }
-        // TUNNELS_SNAPSHOT_SCRIPT="exclude:box-b:7777@8,off:box-b@12,on:box-b@15,all:box-b@16"
+        // TUNNELS_SNAPSHOT_SCRIPT="exclude:box-b:7777@8,off:box-b@12,on:box-b@15,all:box-b@16,field:box@18"
         if let script = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_SCRIPT"] {
             for step in script.split(separator: ",") {
                 let parts = step.split(separator: "@")
@@ -43,6 +43,10 @@ enum DebugSnapshot {
                     case "on": model.setMachine(fields[1], on: true)
                     case "all": model.enableAllPorts(fields[1])
                     case "closeall": model.closeAll()
+                    case "field":
+                        // Show the host:port field with this text typed, suggestions and all.
+                        model.quickOpenVisible = true
+                        model.quickOpenText = fields.dropFirst().joined(separator: ":")
                     case "escape":
                         // Through the event queue, so the panel's key monitor sees it like a real key press.
                         if let event = NSEvent.keyEvent(

@@ -1,65 +1,57 @@
 # Tunnels
 
-[![CI](https://github.com/MohammedEsafi/tunnels/actions/workflows/ci.yml/badge.svg)](https://github.com/MohammedEsafi/tunnels/actions/workflows/ci.yml)
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](Package.swift)
-[![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](Package.swift)
-[![License: MIT](https://img.shields.io/badge/License-MIT-2ECC71)](LICENSE)
+A macOS menu bar app that keeps SSH port forwards open for you. Click the
+icon, switch a forward on, and it stays up through sleep, Wi-Fi changes and
+dropped connections.
 
-A macOS menu bar app that manages SSH local port forwards on demand. Click the
-icon, switch a forward on, and the app keeps it up through sleep and network
-changes.
+![The Tunnels panel: forwards grouped by machine with switches; a machine reconnecting; the field with suggestions; the inline port editor](.github/images/panel.png)
 
-- Uses the system `ssh`, your `~/.ssh/config` and your agent. Nothing but Host
-  aliases and ports is stored.
-- One SSH connection per machine; forwards are added and removed on it without
+- Uses the `ssh` you already have, the Host aliases already in
+  `~/.ssh/config` (and Tailscale names), and the keys already in your agent.
+  Only aliases and ports are stored.
+- One connection per machine; forwards are added and removed on it without
   reconnecting. Listeners bind `127.0.0.1` only.
-- Watch a whole machine and forward every port it serves, with clashes moved to
-  an offset automatically.
-- Dropped connections reconnect with backoff; one notification if that gives up.
-- No dependencies beyond the Xcode command line tools.
+- Watch a whole machine and get every port it serves, each on the same local
+  number. When two machines offer the same port, the second moves to an
+  offset instead of failing.
+- Reconnects with backoff after a drop; one notification if it gives up, one
+  when the machine is back.
+- Shows `ssh -L` forwards you started in a terminal, and can stop them.
+- Rename, change ports, open in the browser, copy `localhost:port`: all from
+  the row's right-click menu. No words on rows, nothing in the menu bar but a
+  glyph.
+- A single Swift package with no dependencies.
 
 ## Install
 
-Download `Tunnels.app` from [Releases](https://github.com/MohammedEsafi/tunnels/releases),
-move it to `/Applications`, and open it with right-click › Open the first
-time (the build is signed ad hoc). Needs macOS 14 and keys in `ssh-agent`.
+1. Download `Tunnels.app` from the
+   [Releases](https://github.com/MohammedEsafi/tunnels/releases) page and
+   move it to `/Applications`. macOS 14 or newer.
+2. Open it the first time from a terminal. The build is signed ad hoc, so
+   Finder refuses a double-click until the quarantine flag is cleared:
 
-Or build it yourself:
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Tunnels.app && open -a Tunnels
+   ```
 
-```bash
-scripts/bundle.sh            # release build -> build/Tunnels.app
-scripts/run.sh               # debug build, then (re)launch
-swift test                   # unit tests
-```
+   After that, open it like any app, or turn on "Open at login" in its
+   Settings.
+3. Make sure `ssh <alias>` works in a terminal without a prompt: the alias is
+   in `~/.ssh/config` and the key is loaded, for example with
+   `ssh-add --apple-use-keychain ~/.ssh/id_ed25519`.
+4. Click the icon in the menu bar, press ⌘N, type `alias:5432` and press
+   Return. The row turns blue, and `localhost:5432` is that machine's 5432.
 
-## Using it
+## Learn more
 
-Type `host:port` in the field and press Return. Each forward and each machine
-has a switch. Right-click a forward for Copy, Open in Browser, Rename, Change
-Ports and Close and Forget; right-click a machine for All Ports, Pinned Ports
-Only, Copy ssh Command, Show Log and Forget Machine. Settings… holds Open at
-login, notifications and Connection Logs.
+Everything else lives in the agent skills under
+[`.agents/skills/`](.agents/skills): the full manual, running from source,
+testing, contributing, the architecture, the security model and releasing.
+Open this repository in an agent that reads skills, such as Claude Code, and
+ask it in plain words: "how do I forward every port on a machine?", "run the
+tests", "add a feature and open a pull request", "cut a release". The agent
+loads the matching skill and answers or acts from it. The files are written
+for people too, so reading them directly works just as well.
 
-## Skills
-
-The documentation is a set of agent skills in
-[`.agents/skills/`](.agents/skills), one `SKILL.md` per task. Open the
-repository in an agent that reads that folder (Claude Code does, through the
-`.claude/skills` link) and ask; or read the files directly, they are written
-for people too.
-
-| Skill | Ask it for |
-|---|---|
-| [manual](.agents/skills/manual/SKILL.md) | how to use the app: every menu item, all-ports and offsets, reconnection, files |
-| [develop](.agents/skills/develop/SKILL.md) | building and running from source, the Docker lab, logging, the snapshot harness |
-| [testing](.agents/skills/testing/SKILL.md) | verifying a change: the CI checks, writing a core test, the manual drills |
-| [contribute](.agents/skills/contribute/SKILL.md) | making and pushing a change: steps, commit format, house rules |
-| [architecture](.agents/skills/architecture/SKILL.md) | the decisions, module boundaries and ssh mechanics |
-| [security](.agents/skills/security/SKILL.md) | the trust model, the review checklist, reporting a vulnerability |
-| [release](.agents/skills/release/SKILL.md) | what CI does, tagging a version, what the release workflow publishes |
-
-[CHANGELOG.md](CHANGELOG.md) records what changed in each version.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+[CHANGELOG.md](CHANGELOG.md) records what changed in each version. MIT
+licence, see [LICENSE](LICENSE).
