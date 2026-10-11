@@ -86,9 +86,7 @@ struct ExternalRow: View {
     var body: some View {
         HStack(spacing: 8) {
             RowIcon(symbol: "terminal")
-            Text(forward.spec.remoteHost == "localhost" || forward.spec.remoteHost == "127.0.0.1"
-                 ? String(forward.spec.localPort)
-                 : "\(forward.spec.remoteHost)")
+            Text(forward.spec.isLoopbackRemote ? String(forward.spec.localPort) : forward.spec.remoteHost)
                 .font(.system(size: 13))
                 .monospacedDigit()
             if hovering {
@@ -107,5 +105,10 @@ struct ExternalRow: View {
         .frame(height: 32)
         .background(RowHighlight(on: hovering))
         .onHover { hovering = $0 }
+        // Stop is a hover control for the mouse; the menu and the action reach it from the keyboard and VoiceOver.
+        .contextMenu { Button("Stop") { model.stopExternal(forward) } }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(forward.spec.portLabel) started outside Tunnels, process \(String(forward.pid))")
+        .accessibilityAction(named: "Stop") { model.stopExternal(forward) }
     }
 }

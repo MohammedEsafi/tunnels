@@ -131,7 +131,7 @@ struct ForwardRow: View {
         InlineTextField(text: $draft, placeholder: placeholder, onCommit: commit, onCancel: { editing = nil }, selection: selection)
             .frame(height: 22)
             .padding(.horizontal, 5)
-            .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(0.25)))
+            .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.08)))
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.accentColor))
     }
 
