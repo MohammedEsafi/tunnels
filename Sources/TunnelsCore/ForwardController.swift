@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// Owns desired state (what the switches say) and actual state (what ssh
-/// reports). Everything the UI shows comes from here.
+/// reports), one master connection per machine.
 @Observable
 @MainActor
 public final class ForwardController {
@@ -16,7 +16,8 @@ public final class ForwardController {
     private var masters: [String: SSHMaster] = [:]
     private var startingMasters: [String: Task<SSHMaster, Error>] = [:]
 
-    /// Set by the reconnector. Receives the alias and ssh's last output.
+    /// Fired when a master exits on its own, with the alias and ssh's last
+    /// output. The reconnector listens.
     public var onMasterDropped: (@MainActor (String, String) -> Void)?
 
     /// Machines in all-ports mode that are switched on.
@@ -64,18 +65,12 @@ public final class ForwardController {
         machineStates[alias] ?? .disconnected
     }
 
-    public var activeCount: Int { forwards.filter { $0.state == .active || $0.state == .noService }.count }
-    public var droppedCount: Int { forwards.filter { $0.state == .dropped }.count }
     /// Anything to close: a forward that is wanted on, or a machine being watched.
     public var anyDesired: Bool { forwards.contains { $0.desiredOn } || !autoHosts.isEmpty }
 
     // MARK: Changing the list
 
     /// Replace favourites, keeping the state of any forward that already exists.
-    public func setFavourites(_ specs: [(spec: ForwardSpec, name: String)]) {
-        setFavourites(specs.map { Favourite(name: $0.name, spec: $0.spec) })
-    }
-
     public func setFavourites(_ favourites: [Favourite]) {
         var next: [Forward] = []
         for item in favourites {
@@ -175,10 +170,6 @@ public final class ForwardController {
             await close(forward)
             forwards.removeAll { $0.id == forward.id }
         }
-    }
-
-    public func includePort(_ port: Int, on alias: String) {
-        autoExcluded[alias]?.remove(port)
     }
 
     /// One discovery pass: add forwards for new listeners, drop vanished ones,
@@ -432,10 +423,6 @@ public final class ForwardController {
         for index in forwards.indices where forwards[index].state != .off {
             forwards[index].state = .off
         }
-    }
-
-    public func clearLog(alias: String) {
-        logs[alias] = []
     }
 
     // MARK: Internals

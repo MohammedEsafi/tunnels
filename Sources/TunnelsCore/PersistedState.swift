@@ -5,12 +5,10 @@ public struct PersistedState: Codable, Equatable {
     public struct Entry: Codable, Equatable {
         public var spec: ForwardSpec
         public var name: String
-        public var isFavourite: Bool
 
-        public init(spec: ForwardSpec, name: String, isFavourite: Bool) {
+        public init(spec: ForwardSpec, name: String) {
             self.spec = spec
             self.name = name
-            self.isFavourite = isFavourite
         }
     }
 
@@ -57,7 +55,7 @@ public struct PersistedState: Codable, Equatable {
     public static func capture(from controller: ForwardController) -> PersistedState {
         PersistedState(
             onForwards: controller.forwards.filter { $0.desiredOn && !$0.isDiscovered }.map {
-                Entry(spec: $0.spec, name: $0.name, isFavourite: $0.isFavourite)
+                Entry(spec: $0.spec, name: $0.name)
             },
             autoHostsOn: controller.autoHosts.sorted()
         )

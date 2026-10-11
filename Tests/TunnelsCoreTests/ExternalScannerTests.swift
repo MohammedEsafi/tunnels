@@ -53,8 +53,8 @@ final class PersistedStateTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: dir) }
         let url = dir.appendingPathComponent("state.json")
         let state = PersistedState(onForwards: [
-            .init(spec: ForwardSpec(machine: "a", localPort: 1), name: "one", isFavourite: true),
-            .init(spec: ForwardSpec(machine: "b", localPort: 2, remotePort: 3), name: "3", isFavourite: false),
+            .init(spec: ForwardSpec(machine: "a", localPort: 1), name: "one"),
+            .init(spec: ForwardSpec(machine: "b", localPort: 2, remotePort: 3), name: "3"),
         ])
         state.save(to: url)
         XCTAssertEqual(PersistedState.load(from: url), state)

@@ -42,8 +42,8 @@ final class SystemEvents {
     }
 }
 
-/// One notification when a machine gives up reconnecting. Authorisation is
-/// asked for lazily, the first time there is something to say.
+/// Posts user notifications. Authorisation is asked for lazily, the first
+/// time there is something to say.
 enum Notifier {
     static func post(title: String, body: String) {
         DebugLog.log("notification: \(title) — \(body)")

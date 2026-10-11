@@ -39,12 +39,6 @@ public protocol ProcessRunning: Sendable {
     ) throws -> any ProcessHandle
 }
 
-public extension ProcessRunning {
-    func run(_ executable: String, arguments: [String]) async throws -> ProcessResult {
-        try await run(executable, arguments: arguments, timeout: 20)
-    }
-}
-
 public final class SystemProcessRunner: ProcessRunning {
     public init() {}
 

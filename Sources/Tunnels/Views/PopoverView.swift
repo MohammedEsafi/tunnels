@@ -1,9 +1,9 @@
 import SwiftUI
 import TunnelsCore
 
-/// Variant D: bold machine rows with a switch, quiet forward rows with a
-/// circled icon, a right-aligned port column and a switch. Detail shows on
-/// hover. The host:port field lives behind the + button.
+/// The menu: bold machine rows with a switch, quiet forward rows with a
+/// circled icon, a right-aligned port column and a switch. The host:port
+/// field lives behind the + button.
 struct PopoverView: View {
     @Environment(AppModel.self) private var model
     @State private var listHeight: CGFloat = 0
@@ -190,7 +190,6 @@ struct RowIcon: View {
 struct PortColumn: View {
     @Environment(AppModel.self) private var model
     let spec: ForwardSpec
-    var emphasis = false
     @State private var copied = false
 
     var body: some View {
@@ -206,7 +205,7 @@ struct PortColumn: View {
                 if copied {
                     Text("Copied").foregroundStyle(.secondary)
                 } else if spec.localPort == spec.remotePort {
-                    Text(String(spec.localPort)).foregroundStyle(emphasis ? .primary : .secondary)
+                    Text(String(spec.localPort)).foregroundStyle(.secondary)
                 } else {
                     HStack(spacing: 3) {
                         Text(String(spec.localPort)).foregroundStyle(.primary)
