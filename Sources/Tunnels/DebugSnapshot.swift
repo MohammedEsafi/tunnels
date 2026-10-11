@@ -35,7 +35,7 @@ enum DebugSnapshot {
                     switch fields.first {
                     case "exclude":
                         if fields.count == 3, let port = Int(fields[2]),
-                           let forward = model.controller.forwards.first(where: { $0.spec.machine == fields[1] && $0.spec.localPort == port }) {
+                           let forward = model.controller.forwards.first(where: { $0.spec.machine == fields[1] && $0.spec.remotePort == port }) {
                             model.excludePort(forward)
                         } else { DebugLog.log("script: no such forward") }
                     case "off": model.setMachine(fields[1], on: false)

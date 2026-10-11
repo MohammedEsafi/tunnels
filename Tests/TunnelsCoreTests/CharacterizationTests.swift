@@ -84,6 +84,19 @@ final class ControllerLifecycleTests: XCTestCase {
         XCTAssertTrue(controller.forwards.allSatisfy { !$0.desiredOn && $0.state == .off })
     }
 
+    func testExclusionsUseTheRemoteNumberEvenWhenTheLocalOneIsOffset() async {
+        runner.script = { args in args.contains("--") ? ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:8080 0.0.0.0:*") : nil }
+        controller.enableAutoHost("gpu-box", offset: 10000)
+        await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
+        XCTAssertEqual(controller.forwards(on: "gpu-box").first?.spec, ForwardSpec(machine: "gpu-box", localPort: 18080, remotePort: 8080))
+
+        await controller.excludePort(remotePort: 8080, on: "gpu-box")
+
+        XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
+        XCTAssertEqual(controller.autoExcluded["gpu-box"], [8080])
+        XCTAssertEqual(runner.calls(containing: "cancel").count, 1)
+    }
+
     func testPersistedStateCaptureSkipsDiscoveredRows() async {
         await controller.setForward(id: controller.forwards[0].id, on: true)
         await controller.addAdHoc(ForwardSpec(machine: "box-b", localPort: 8080), name: "web")

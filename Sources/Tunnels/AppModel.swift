@@ -114,7 +114,7 @@ final class AppModel {
         Task {
             if forward.isDiscovered {
                 // Pin it on the new number; discovery then leaves this remote port alone.
-                await controller.excludePort(forward.spec.remotePort, on: forward.spec.machine)
+                await controller.excludePort(remotePort: forward.spec.remotePort, on: forward.spec.machine)
                 editFavourites("setExcluded") { try Favourites.setExcluded(controller.autoExcluded[forward.spec.machine] ?? [], forHost: forward.spec.machine, in: self.favouritesURL) }
                 editFavourites("add") { try Favourites.add(Favourite(name: forward.name, spec: moved), to: self.favouritesURL) }
                 reloadFavourites()
@@ -491,13 +491,8 @@ final class AppModel {
     func excludePort(_ forward: Forward) {
         let alias = forward.spec.machine
         Task {
-            await controller.excludePort(forward.spec.localPort, on: alias)
-            do {
-                let written = try Favourites.setExcluded(controller.autoExcluded[alias] ?? [], forHost: alias, in: favouritesURL)
-                DebugLog.log("exclude \(forward.spec.localPort) on \(alias): now \(controller.autoExcluded[alias] ?? []), written=\(written)")
-            } catch {
-                DebugLog.log("exclude \(forward.spec.localPort) on \(alias): write failed \(error)")
-            }
+            await controller.excludePort(remotePort: forward.spec.remotePort, on: alias)
+            editFavourites("setExcluded") { try Favourites.setExcluded(controller.autoExcluded[alias] ?? [], forHost: alias, in: self.favouritesURL) }
             reloadFavourites()
         }
     }
