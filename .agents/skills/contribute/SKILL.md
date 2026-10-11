@@ -1,6 +1,6 @@
 ---
 name: contribute
-description: Make a change to Tunnels the way the project expects: branch, implement within the design rules, test, write a conventional commit, update the changelog and open a pull request. Use when someone wants to add a feature, fix a bug, or push a change, and for any question about commit or pull request conventions.
+description: "Make a change to Tunnels the way the project expects: branch, implement within the design rules, test, write a conventional commit, update the changelog and open a pull request. Use when someone wants to add a feature, fix a bug, or push a change, and for any question about commit or pull request conventions."
 ---
 
 # Contributing to Tunnels
