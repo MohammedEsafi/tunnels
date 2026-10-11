@@ -36,7 +36,7 @@ struct ForwardRow: View {
                 if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: !forward.desiredOn) }
             } label: {
                 HStack(spacing: 6) {
-                    Text(portIsName ? String(forward.spec.localPort) : forward.name)
+                    Text(forward.name)
                         .font(.system(size: 13))
                         .monospacedDigit()
                         .foregroundStyle(forward.state == .off ? Color.primary.opacity(0.75) : .primary)

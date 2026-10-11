@@ -26,6 +26,11 @@ public final class ForwardController {
     /// What the last scan of each auto host found (minus exclusions), kept
     /// after the host is switched off so "Pinned only" can freeze it.
     public private(set) var lastDiscovered: [String: Set<Int>] = [:]
+    /// Per-machine offset, assigned the first time one of its discovered
+    /// ports is taken locally: 10000 for the first machine, 20000 next.
+    public private(set) var offsets: [String: Int] = [:]
+    /// Fired once when a machine gets its offset.
+    public var onOffsetAssigned: (@MainActor (String, Int) -> Void)?
     /// How often an auto host is scanned.
     public var discoveryInterval: TimeInterval = 5
     private var discoveryLoops: [String: Task<Void, Never>] = [:]
@@ -117,8 +122,9 @@ public final class ForwardController {
     // MARK: All ports
 
     /// Watch a machine and forward every listener it has, except `excluded`.
-    public func enableAutoHost(_ alias: String, excluded: Set<Int> = []) {
+    public func enableAutoHost(_ alias: String, excluded: Set<Int> = [], offset: Int? = nil) {
         autoExcluded[alias] = excluded
+        if let offset { offsets[alias] = offset }
         guard !autoHosts.contains(alias) else { return }
         autoHosts.insert(alias)
         discoveryLoops[alias] = Task { [weak self] in
@@ -146,11 +152,11 @@ public final class ForwardController {
         }
     }
 
-    /// "Not this one": drop a discovered port and keep it dropped.
+    /// "Not this one": drop a discovered port (by its remote number) and keep it dropped.
     public func excludePort(_ port: Int, on alias: String) async {
         autoExcluded[alias, default: []].insert(port)
         lastDiscovered[alias]?.remove(port)
-        for forward in forwards(on: alias) where forward.isDiscovered && forward.spec.localPort == port {
+        for forward in forwards(on: alias) where forward.isDiscovered && forward.spec.remotePort == port {
             await close(forward)
             forwards.removeAll { $0.id == forward.id }
         }
@@ -179,24 +185,63 @@ public final class ForwardController {
             return
         }
         let excluded = autoExcluded[alias] ?? []
-        let pinnedLocal = Set(forwards(on: alias).filter { !$0.isDiscovered }.map(\.spec.localPort))
-        let wanted = PortDiscovery.parse(output).subtracting(excluded).subtracting(pinnedLocal)
+        let pinnedRemote = Set(forwards(on: alias).filter {
+            !$0.isDiscovered && ($0.spec.remoteHost == "localhost" || $0.spec.remoteHost == "127.0.0.1")
+        }.map(\.spec.remotePort))
+        let wanted = PortDiscovery.parse(output).subtracting(excluded).subtracting(pinnedRemote)
         lastDiscovered[alias] = wanted
         let current = forwards(on: alias).filter(\.isDiscovered)
-        appendLog(alias, "scan: listening \(PortDiscovery.parse(output).sorted()) excluded \(excluded.sorted()) have \(current.map(\.spec.localPort).sorted())")
+        appendLog(alias, "scan: listening \(PortDiscovery.parse(output).sorted()) excluded \(excluded.sorted()) have \(current.map(\.spec.remotePort).sorted())")
 
-        for forward in current where !wanted.contains(forward.spec.localPort) {
+        for forward in current where !wanted.contains(forward.spec.remotePort) {
             await close(forward)
             forwards.removeAll { $0.id == forward.id }
         }
-        for port in wanted.sorted() where !current.contains(where: { $0.spec.localPort == port }) {
-            let forward = Forward(spec: ForwardSpec(machine: alias, localPort: port), name: String(port), isFavourite: false, isDiscovered: true, desiredOn: true)
-            forwards.append(forward)
-            await open(forward)
+        for port in wanted.sorted() where !current.contains(where: { $0.spec.remotePort == port }) {
+            await openDiscovered(port, on: alias)
         }
         for forward in forwards(on: alias) where forward.isDiscovered {
-            if case .error = forward.state { await open(forward) }
+            if case .error = forward.state {
+                forwards.removeAll { $0.id == forward.id }
+                await openDiscovered(forward.spec.remotePort, on: alias)
+            }
         }
+    }
+
+    /// Open a discovered port on its own number; if that is taken locally,
+    /// give the machine an offset (once) and open it there instead.
+    private func openDiscovered(_ port: Int, on alias: String) async {
+        let plain = Forward(spec: ForwardSpec(machine: alias, localPort: port), name: String(port), isFavourite: false, isDiscovered: true, desiredOn: true)
+        if offsets[alias] == nil || !isLocalPortTaken(port) {
+            forwards.append(plain)
+            await open(plain)
+            guard case .error(let reason) = forwards.first(where: { $0.id == plain.id })?.state,
+                  reason == "Local port in use" else { return }
+            forwards.removeAll { $0.id == plain.id }
+        }
+        let offset: Int
+        if let existing = offsets[alias] {
+            offset = existing
+        } else {
+            offset = nextOffset()
+            offsets[alias] = offset
+            appendLog(alias, "local ports taken: using +\(offset) for this machine")
+            onOffsetAssigned?(alias, offset)
+        }
+        let moved = Forward(spec: ForwardSpec(machine: alias, localPort: port + offset, remotePort: port), name: String(port), isFavourite: false, isDiscovered: true, desiredOn: true)
+        forwards.append(moved)
+        await open(moved)
+    }
+
+    /// Something of ours already listens there, so do not even try the plain number.
+    private func isLocalPortTaken(_ port: Int) -> Bool {
+        forwards.contains { $0.spec.localPort == port && ($0.state == .active || $0.state == .noService) }
+    }
+
+    private func nextOffset() -> Int {
+        var candidate = 10000
+        while offsets.values.contains(candidate) { candidate += 10000 }
+        return candidate
     }
 
     /// The master switch: every forward on the machine on or off.

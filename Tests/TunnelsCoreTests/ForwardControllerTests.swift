@@ -226,6 +226,50 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(runner.calls(containing: "exit").count, 1)
     }
 
+    func testClashingDiscoveredPortsMoveByOneOffsetPerMachine() async {
+        // box-a already holds 8080 and 7777 locally; box-b offers the same.
+        let listeners = "LISTEN 0 1 127.0.0.1:7777 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8080 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:9999 0.0.0.0:*"
+        let takenLocally: Set<String> = ["127.0.0.1:7777:localhost:7777", "127.0.0.1:8080:localhost:8080"]
+        runner.script = { args in
+            if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            if args.contains("forward"), let spec = args.last(where: { $0.contains(":") }), takenLocally.contains(spec) {
+                return ProcessResult(exitCode: 255, stderr: "mux_client_forward: forwarding request failed: Port forwarding failed")
+            }
+            return ProcessResult(exitCode: 0)
+        }
+        var assigned: [(String, Int)] = []
+        controller.onOffsetAssigned = { assigned.append(($0, $1)) }
+        controller.discoveryInterval = 3600
+        controller.enableAutoHost("box-b")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline, controller.forwards(on: "box-b").count < 3 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+
+        let rows = controller.forwards(on: "box-b").sorted { $0.spec.remotePort < $1.spec.remotePort }
+        XCTAssertEqual(rows.map(\.spec.localPort), [17777, 18080, 9999])
+        XCTAssertEqual(rows.map(\.spec.remotePort), [7777, 8080, 9999])
+        XCTAssertTrue(rows.allSatisfy { $0.state == .active })
+        XCTAssertEqual(controller.offsets["box-b"], 10000)
+        XCTAssertEqual(assigned.count, 1)
+
+        // A second scan changes nothing.
+        await controller.scan("box-b")
+        XCTAssertEqual(controller.forwards(on: "box-b").count, 3)
+        XCTAssertEqual(assigned.count, 1)
+
+        // Another clashing machine gets the next offset.
+        controller.enableAutoHost("box-c")
+        let deadline2 = Date().addingTimeInterval(5)
+        while Date() < deadline2, controller.forwards(on: "box-c").count < 3 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.offsets["box-c"], 20000)
+        // box-b now holds 9999 plainly, so box-c's 9999 clashes as well.
+        XCTAssertEqual(controller.forwards(on: "box-c").map(\.spec.localPort).sorted(), [27777, 28080, 29999])
+    }
+
     func testAllPortsRemoveEachThenDisableAndEnableAgain() async {
         let listeners = "LISTEN 0 1 127.0.0.1:7777 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8080 0.0.0.0:*"
         runner.script = { args in
