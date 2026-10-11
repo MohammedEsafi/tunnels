@@ -11,8 +11,6 @@ struct MachineSection: View {
     private var external: [ExternalForward] { model.external(on: alias) }
     private var state: MachineState { model.controller.machineState(alias) }
 
-    @State private var hovering = false
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -42,16 +40,6 @@ struct MachineSection: View {
                     .accessibilityLabel("all ports")
             }
             Spacer(minLength: 4)
-            if hovering && isAuto {
-                Button {
-                    model.forgetAutoHost(alias)
-                } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Stop watching all ports and forget")
-                .accessibilityLabel("Forget all ports on \(alias)")
-            }
             if !forwards.isEmpty || isAuto {
                 Toggle("", isOn: Binding(
                     get: { forwards.contains { $0.desiredOn } || model.isWatching(alias) || model.modeQuestion == alias },
@@ -66,11 +54,10 @@ struct MachineSection: View {
         .padding(.horizontal, 10)
         .frame(height: 30)
         .padding(.top, 4)
-        .contentShape(Rectangle())
-        .onHover { hovering = $0 }
     }
 
-    /// Asked when an all-ports host is switched on.
+    /// Asked when an all-ports host is switched on. "Pinned only" is also how
+    /// you leave all-ports mode: the host becomes an ordinary one.
     private var question: some View {
         HStack(spacing: 8) {
             Button("All ports") { model.enableAllPorts(alias) }
@@ -79,7 +66,6 @@ struct MachineSection: View {
                 .keyboardShortcut(.defaultAction)
             Button("Pinned only") { model.enablePinnedOnly(alias) }
                 .controlSize(.small)
-                .disabled(forwards.isEmpty)
             Spacer()
         }
         .padding(.horizontal, 10)
