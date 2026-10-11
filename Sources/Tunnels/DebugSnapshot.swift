@@ -53,7 +53,6 @@ enum DebugSnapshot {
             statusItem.openForSnapshot(topLeft: NSPoint(x: 40, y: screen.height - 60))
             switch ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_PAGE"] {
             case "settings": model.menuPage = .settings
-            case "pinned": model.menuPage = .pinned
             case "logs": model.menuPage = .logs
             default: break
             }

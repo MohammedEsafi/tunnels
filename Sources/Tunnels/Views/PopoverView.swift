@@ -17,7 +17,6 @@ struct PopoverView: View {
             switch model.menuPage {
             case .main: mainPage
             case .settings: SettingsPage()
-            case .pinned: PinnedPage()
             case .logs: LogsPage()
             }
         }
@@ -32,7 +31,7 @@ struct PopoverView: View {
         switch model.menuPage {
         case .main: return 0
         case .settings: return 1
-        case .pinned, .logs: return 2
+        case .logs: return 2
         }
     }
 
