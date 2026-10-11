@@ -65,7 +65,10 @@ final class ForwardControllerTests: XCTestCase {
         await controller.setForward(id: id(redis), on: true)
 
         XCTAssertEqual(controller.forwards.first { $0.spec == postgres }?.state, .active)
-        XCTAssertEqual(controller.forwards.first { $0.spec == redis }?.state, .error("Local port in use"))
+        // A taken port no longer stays red: the forward moves by the machine's offset.
+        let movedRedis = controller.forwards.first { $0.name == "redis" }
+        XCTAssertEqual(movedRedis?.spec, ForwardSpec(machine: "prod-db-01", localPort: 16379, remotePort: 6379))
+        XCTAssertEqual(movedRedis?.state, .active)
         XCTAssertEqual(controller.machineState("prod-db-01"), .connected)
     }
 
@@ -278,6 +281,58 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(controller.offsets["box-d"], 30000)
         XCTAssertEqual(controller.forwards(on: "box-d").map(\.spec.localPort).sorted(), [37777, 38080, 39999])
         XCTAssertEqual(assigned.count, 3)
+    }
+
+    func testPinnedForwardMovesWhenItsPortIsTaken() async {
+        runner.script = { args in
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            if args.contains("forward"), args.contains("127.0.0.1:5432:localhost:5432") {
+                return ProcessResult(exitCode: 255, stderr: "bind [127.0.0.1]:5432: Address already in use")
+            }
+            return ProcessResult(exitCode: 0)
+        }
+        var moved: (ForwardSpec, ForwardSpec)?
+        controller.onForwardMoved = { moved = ($0, $1) }
+        await controller.setForward(id: id(postgres), on: true)
+
+        let row = controller.forwards.first { $0.name == "postgres" }
+        XCTAssertEqual(row?.spec, ForwardSpec(machine: "prod-db-01", localPort: 15432, remotePort: 5432))
+        XCTAssertEqual(row?.state, .active)
+        XCTAssertEqual(controller.offsets["prod-db-01"], 10000)
+        XCTAssertEqual(moved?.0, postgres)
+        XCTAssertEqual(moved?.1.localPort, 15432)
+    }
+
+    func testManualSwitchOnTriesPlainNumberForMovedPins() async {
+        var taken: Set<String> = ["127.0.0.1:5432:localhost:5432"]
+        runner.script = { args in
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            if args.contains("forward"), let spec = args.last(where: { $0.contains(":") }), taken.contains(spec) {
+                return ProcessResult(exitCode: 255, stderr: "bind: Address already in use")
+            }
+            return ProcessResult(exitCode: 0)
+        }
+        var moves: [(ForwardSpec, ForwardSpec)] = []
+        controller.onForwardMoved = { moves.append(($0, $1)) }
+        await controller.setForward(id: id(postgres), on: true)
+        XCTAssertEqual(controller.forwards.first { $0.name == "postgres" }?.spec.localPort, 15432)
+        XCTAssertTrue(controller.forwards.first { $0.name == "postgres" }!.movedByApp)
+
+        // Still taken: switching the machine off and on keeps the moved number.
+        await controller.setMachine(alias: "prod-db-01", on: false)
+        await controller.setMachine(alias: "prod-db-01", on: true)
+        XCTAssertEqual(controller.forwards.first { $0.name == "postgres" }?.spec.localPort, 15432)
+        XCTAssertEqual(controller.forwards.first { $0.name == "postgres" }?.state, .active)
+
+        // Freed: a manual switch-on goes back to plain and reports the move.
+        taken = []
+        await controller.setMachine(alias: "prod-db-01", on: false)
+        await controller.setMachine(alias: "prod-db-01", on: true)
+        let row = controller.forwards.first { $0.name == "postgres" }
+        XCTAssertEqual(row?.spec, postgres)
+        XCTAssertEqual(row?.state, .active)
+        XCTAssertFalse(row!.movedByApp)
+        XCTAssertEqual(moves.last?.1, postgres)
     }
 
     func testScanMovesPlainRowsOnceAMachineHasAnOffset() async {

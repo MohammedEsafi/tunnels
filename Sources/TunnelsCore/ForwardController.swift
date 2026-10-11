@@ -31,6 +31,9 @@ public final class ForwardController {
     public private(set) var offsets: [String: Int] = [:]
     /// Fired once when a machine gets its offset.
     public var onOffsetAssigned: (@MainActor (String, Int) -> Void)?
+    /// A pinned forward was moved to another local port because its own was
+    /// taken: old spec, new spec. The app rewrites the favourites file.
+    public var onForwardMoved: (@MainActor (ForwardSpec, ForwardSpec) -> Void)?
     /// How often an auto host is scanned.
     public var discoveryInterval: TimeInterval = 5
     private var discoveryLoops: [String: Task<Void, Never>] = [:]
@@ -66,16 +69,21 @@ public final class ForwardController {
 
     /// Replace favourites, keeping the state of any forward that already exists.
     public func setFavourites(_ specs: [(spec: ForwardSpec, name: String)]) {
+        setFavourites(specs.map { Favourite(name: $0.name, spec: $0.spec) })
+    }
+
+    public func setFavourites(_ favourites: [Favourite]) {
         var next: [Forward] = []
-        for item in specs {
+        for item in favourites {
             if let existing = forwards.first(where: { $0.spec == item.spec }) {
                 var kept = existing
                 kept.name = item.name
                 kept.isFavourite = true
                 kept.isDiscovered = false   // pinned now; discovery leaves it alone
+                kept.movedByApp = item.movedByApp
                 next.append(kept)
             } else {
-                next.append(Forward(spec: item.spec, name: item.name, isFavourite: true))
+                next.append(Forward(spec: item.spec, name: item.name, isFavourite: true, movedByApp: item.movedByApp))
             }
         }
         // Anything still on stays in the list, now as an ad-hoc forward.
@@ -266,16 +274,25 @@ public final class ForwardController {
         return candidate
     }
 
-    /// The master switch: every forward on the machine on or off.
+    /// Machines whose next opening should try plain numbers again: set by a
+    /// manual switch-on, consumed by `open`.
+    private var tryPlainOnce: Set<String> = []
+
+    /// The master switch: every forward on the machine on or off. Switching
+    /// on by hand means "start from the best numbers available": the offset
+    /// is dropped and forwards the app had moved try their plain number.
     public func setMachine(alias: String, on: Bool) async {
         if !on, autoHosts.contains(alias) {
             await disableAutoHost(alias)
         }
         if on {
+            offsets[alias] = nil
+            tryPlainOnce.insert(alias)
             for index in forwards.indices where forwards[index].spec.machine == alias {
                 forwards[index].desiredOn = true
             }
             await retry(alias: alias)
+            tryPlainOnce.remove(alias)
         } else {
             for forward in forwards(on: alias) {
                 await setForward(id: forward.id, on: false)
@@ -327,6 +344,7 @@ public final class ForwardController {
     public func healthCheck() async {
         for (alias, master) in masters where machineState(alias) == .connected {
             if await !master.check() {
+                appendLog(alias, "health check: no answer, dropping")
                 await master.stop()
                 await masterDidExit(alias: alias, code: -1, output: "health check failed")
             } else {
@@ -404,6 +422,13 @@ public final class ForwardController {
     // MARK: Internals
 
     private func open(_ forward: Forward) async {
+        // A forward the app moved earlier: on a manual switch-on, see whether
+        // its own number is free again before using the moved one.
+        if forward.movedByApp, !forward.isDiscovered, tryPlainOnce.contains(forward.spec.machine),
+           forward.spec.localPort != forward.spec.remotePort, !isLocalPortTaken(forward.spec.remotePort) {
+            await tryPlain(forward)
+            return
+        }
         update(forward.id) { $0.state = .pending }
         let master: SSHMaster
         do {
@@ -427,7 +452,62 @@ public final class ForwardController {
             let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
             update(forward.id) { $0.state = .error(reason) }
             appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) failed: \(reason)")
+            if reason == "Local port in use", !forward.isDiscovered, forward.spec.localPort == forward.spec.remotePort {
+                await movePinned(forward)
+            }
         }
+    }
+
+    /// Put a moved pinned forward back on its plain number if that binds;
+    /// otherwise carry on with the moved number.
+    private func tryPlain(_ forward: Forward) async {
+        let plain = ForwardSpec(machine: forward.spec.machine, localPort: forward.spec.remotePort, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
+        guard let master = try? await ensureMaster(forward.spec.machine),
+              let index = forwards.firstIndex(where: { $0.id == forward.id }) else {
+            var plainless = forward
+            plainless.movedByApp = false
+            await open(plainless)
+            return
+        }
+        forwards[index].state = .pending
+        if (try? await master.addForward(plain)) != nil {
+            forwards[index].spec = plain
+            forwards[index].movedByApp = false
+            forwards[index].state = .active
+            appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) back on local \(plain.localPort)")
+            onForwardMoved?(forward.spec, plain)
+            await probe(alias: forward.spec.machine)
+        } else {
+            var keep = forwards[index]
+            keep.movedByApp = false   // so this pass does not loop
+            forwards[index] = keep
+            await open(keep)
+            forwards[index].movedByApp = true
+        }
+    }
+
+    /// A pinned forward whose plain number is taken moves to remote + the
+    /// machine's offset, assigning one if needed, like a discovered port.
+    private func movePinned(_ forward: Forward) async {
+        let alias = forward.spec.machine
+        let offset: Int
+        if let existing = offsets[alias] {
+            offset = existing
+        } else {
+            offset = nextOffset()
+            offsets[alias] = offset
+            appendLog(alias, "local ports taken: using +\(offset) for this machine")
+            onOffsetAssigned?(alias, offset)
+        }
+        let moved = ForwardSpec(machine: alias, localPort: forward.spec.remotePort + offset, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
+        guard !forwards.contains(where: { $0.spec == moved }),
+              let index = forwards.firstIndex(where: { $0.id == forward.id }) else { return }
+        forwards[index].spec = moved
+        forwards[index].movedByApp = true
+        forwards[index].state = .pending
+        appendLog(alias, "forward \(forward.spec.sshArgument) moved to local \(moved.localPort)")
+        onForwardMoved?(forward.spec, moved)
+        await open(forwards[index])
     }
 
     private func close(_ forward: Forward) async {
@@ -489,9 +569,12 @@ public final class ForwardController {
 
     private func masterDidExit(alias: String, code: Int32, output: String) async {
         // Ignore exits we asked for.
-        guard masters[alias] != nil else { return }
+        guard masters[alias] != nil else {
+            appendLog(alias, "(an old connection exited with \(code); ignored)")
+            return
+        }
         masters[alias] = nil
-        appendLog(alias, "connection exited (\(code))")
+        appendLog(alias, "connection exited (\(code)) last output: \(output.suffix(160))")
         let wanted = forwards(on: alias).filter { $0.desiredOn }
         if wanted.isEmpty {
             machineStates[alias] = .disconnected

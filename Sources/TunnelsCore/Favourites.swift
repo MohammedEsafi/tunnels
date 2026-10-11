@@ -3,10 +3,13 @@ import Foundation
 public struct Favourite: Equatable, Hashable, Sendable {
     public var name: String
     public var spec: ForwardSpec
+    /// `moved = true` in the file: the app chose this local port, not you.
+    public var movedByApp: Bool
 
-    public init(name: String, spec: ForwardSpec) {
+    public init(name: String, spec: ForwardSpec, movedByApp: Bool = false) {
         self.name = name
         self.spec = spec
+        self.movedByApp = movedByApp
     }
 }
 
@@ -140,7 +143,7 @@ public enum Favourites {
                 continue
             }
             seen.insert(key)
-            result.append(Favourite(name: (name?.isEmpty == false ? name! : "\(remotePort)"), spec: spec))
+            result.append(Favourite(name: (name?.isEmpty == false ? name! : "\(remotePort)"), spec: spec, movedByApp: table["moved"]?.boolean ?? false))
         }
         if !problems.isEmpty { throw FavouritesError(problems: problems) }
         return result
@@ -329,8 +332,9 @@ public extension Favourites {
     }
 
     /// Change the local port of the [[favourite]] block matching host and port.
+    /// `movedByApp` records whether the app chose the new number.
     @discardableResult
-    static func changeLocalPort(_ spec: ForwardSpec, to newPort: Int, in url: URL = defaultURL) throws -> Bool {
+    static func changeLocalPort(_ spec: ForwardSpec, to newPort: Int, movedByApp: Bool = false, in url: URL = defaultURL) throws -> Bool {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
         var lines = text.components(separatedBy: "\n")
         var blocks: [Range<Int>] = []
@@ -355,6 +359,14 @@ public extension Favourites {
             let hasRemote = lines[block].contains { $0.trimmingCharacters(in: .whitespaces).hasPrefix("remote_port") }
             if !hasRemote && newPort != spec.remotePort {
                 lines.insert("remote_port = \(spec.remotePort)", at: portLine + 1)
+            }
+            // The moved flag lives right after the port lines.
+            if let movedLine = lines[block].firstIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("moved") }) {
+                lines.remove(at: movedLine)
+            }
+            if movedByApp {
+                let after = lines[block].lastIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("port") || $0.trimmingCharacters(in: .whitespaces).hasPrefix("remote_port") } ?? portLine
+                lines.insert("moved = true", at: after + 1)
             }
             try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
             return true
