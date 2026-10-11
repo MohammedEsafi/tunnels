@@ -107,7 +107,7 @@ struct SettingsPage: View {
             ToggleRow(title: "Notify about dropped connections", isOn: $model.notifyOnGiveUp)
 
             MenuSeparator()
-            LinkRow(title: "Forwards", detail: model.favourites.isEmpty ? nil : "\(model.favourites.count)") { model.menuPage = .pinned }
+            LinkRow(title: "Forwards", detail: (model.favourites.count + model.autoHosts.count) == 0 ? nil : "\(model.favourites.count + model.autoHosts.count)") { model.menuPage = .pinned }
             LinkRow(title: "Favourites File", external: true) { model.openFavouritesFile() }
             LinkRow(title: "SSH Config", external: true) { model.openSSHConfig() }
             LinkRow(title: "Connection Logs") { model.menuPage = .logs }
@@ -133,7 +133,10 @@ struct PinnedPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PageHeader(title: "Forwards", back: .settings)
-            if model.favourites.isEmpty {
+            ForEach(model.autoHosts, id: \.self) { host in
+                AutoHostRow(host: host)
+            }
+            if model.favourites.isEmpty && model.autoHosts.isEmpty {
                 Text("Nothing yet. Forwards you open are remembered here.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                     .padding(.horizontal, 10).padding(.vertical, 8)
@@ -159,6 +162,40 @@ struct PinnedPage: View {
             }
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .trailing)))
+    }
+}
+
+private struct AutoHostRow: View {
+    @Environment(AppModel.self) private var model
+    let host: AutoHost
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(host.name).font(.system(size: 13))
+                    Image(systemName: "infinity").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+                }
+                Text(host.excluded.isEmpty ? "all ports" : "all ports except \(host.excluded.sorted().map(String.init).joined(separator: ", "))")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            if hovering {
+                Button {
+                    model.forgetAutoHost(host.name)
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Forget")
+                .accessibilityLabel("Forget \(host.name)")
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 36)
+        .background(RowHighlight(on: hovering))
+        .onHover { hovering = $0 }
     }
 }
 

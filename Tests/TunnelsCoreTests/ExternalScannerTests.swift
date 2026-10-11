@@ -59,5 +59,9 @@ final class PersistedStateTests: XCTestCase {
         state.save(to: url)
         XCTAssertEqual(PersistedState.load(from: url), state)
         XCTAssertEqual(PersistedState.load(from: dir.appendingPathComponent("missing.json")), PersistedState())
+        try? """
+        {"onForwards":[]}
+        """.write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertEqual(PersistedState.load(from: url).autoHostsOn, [])
     }
 }

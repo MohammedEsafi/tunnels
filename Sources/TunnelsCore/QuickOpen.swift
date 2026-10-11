@@ -3,12 +3,14 @@ import Foundation
 public enum Suggestion: Equatable, Hashable, Identifiable {
     case favourite(Favourite)
     case host(HostEntry)
+    case allPorts(String)
     case spec(ForwardSpec)
 
     public var id: String {
         switch self {
         case .favourite(let f): return "fav:" + f.spec.sshArgument + "@" + f.spec.machine
         case .host(let h): return "host:" + h.id
+        case .allPorts(let h): return "all:" + h
         case .spec(let s): return "spec:" + s.sshArgument + "@" + s.machine
         }
     }
@@ -79,6 +81,13 @@ public enum QuickOpen {
                 }
             for host in matchingHosts where !result.contains(.host(host)) {
                 result.append(.host(host))
+            }
+            // Exactly one host named: offer every port on it, right under it.
+            if let exact = matchingHosts.first(where: { $0.name.lowercased() == needle }) {
+                result.insert(.allPorts(exact.name), at: min(result.firstIndex(of: .host(exact)).map { $0 + 1 } ?? result.count, result.count))
+            } else if matchingHosts.isEmpty, matchingFavourites.isEmpty, isHost(text) {
+                // A name we do not know, typed in full: ssh may still resolve it.
+                result.append(.allPorts(text))
             }
         }
 

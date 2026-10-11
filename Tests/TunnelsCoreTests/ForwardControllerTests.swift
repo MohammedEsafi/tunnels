@@ -157,6 +157,43 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(again?.state, .active)
     }
 
+    func testAllPortsDiscoversAddsAndRemoves() async {
+        var listeners = "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:5173 0.0.0.0:*\nLISTEN 0 1 0.0.0.0:22 0.0.0.0:*"
+        runner.script = { args in
+            if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            return ProcessResult(exitCode: 0)
+        }
+        controller.discoveryInterval = 3600
+        controller.enableAutoHost("gpu-box", excluded: [5173])
+        // The loop scans once right away; wait for it rather than racing it.
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline, controller.forwards(on: "gpu-box").first?.state != .active {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+
+        XCTAssertEqual(controller.machineState("gpu-box"), .connected)
+        let discovered = controller.forwards(on: "gpu-box")
+        XCTAssertEqual(discovered.map(\.spec.localPort), [3000])
+        XCTAssertTrue(discovered.allSatisfy { $0.isDiscovered && $0.state == .active })
+        XCTAssertTrue(controller.machines.contains("gpu-box"))
+
+        listeners = "LISTEN 0 1 127.0.0.1:8080 0.0.0.0:*"
+        await controller.scan("gpu-box")
+        XCTAssertEqual(controller.forwards(on: "gpu-box").map(\.spec.localPort), [8080])
+        XCTAssertEqual(runner.calls(containing: "cancel").count, 1)
+
+        await controller.excludePort(8080, on: "gpu-box")
+        XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
+        await controller.scan("gpu-box")
+        XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
+
+        await controller.disableAutoHost("gpu-box")
+        XCTAssertFalse(controller.autoHosts.contains("gpu-box"))
+        XCTAssertEqual(controller.machineState("gpu-box"), .disconnected)
+        XCTAssertEqual(runner.calls(containing: "exit").count, 1)
+    }
+
     func testSocketPathIsShortAndStable() {
         let dir = URL(fileURLWithPath: "/Users/someone/Library/Application Support/Tunnels/sockets")
         let a = SSHMaster.socketPath(for: "a-very-long-host-alias.example.internal", in: dir)

@@ -15,9 +15,20 @@ public struct PersistedState: Codable, Equatable {
     }
 
     public var onForwards: [Entry]
+    /// Machines that were in all-ports mode and switched on.
+    public var autoHostsOn: [String]
 
-    public init(onForwards: [Entry] = []) {
+    public init(onForwards: [Entry] = [], autoHostsOn: [String] = []) {
         self.onForwards = onForwards
+        self.autoHostsOn = autoHostsOn
+    }
+
+    enum CodingKeys: String, CodingKey { case onForwards, autoHostsOn }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        onForwards = try c.decodeIfPresent([Entry].self, forKey: .onForwards) ?? []
+        autoHostsOn = try c.decodeIfPresent([String].self, forKey: .autoHostsOn) ?? []
     }
 
     public static var defaultURL: URL {
@@ -44,8 +55,11 @@ public struct PersistedState: Codable, Equatable {
 
     @MainActor
     public static func capture(from controller: ForwardController) -> PersistedState {
-        PersistedState(onForwards: controller.forwards.filter(\.desiredOn).map {
-            Entry(spec: $0.spec, name: $0.name, isFavourite: $0.isFavourite)
-        })
+        PersistedState(
+            onForwards: controller.forwards.filter { $0.desiredOn && !$0.isDiscovered }.map {
+                Entry(spec: $0.spec, name: $0.name, isFavourite: $0.isFavourite)
+            },
+            autoHostsOn: controller.autoHosts.sorted()
+        )
     }
 }

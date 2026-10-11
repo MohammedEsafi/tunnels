@@ -157,6 +157,33 @@ final class FavouritesTests: XCTestCase {
         XCTAssertFalse(try Favourites.rename(ForwardSpec(machine: "nope", localPort: 1), to: "x", in: url))
     }
 
+    func testHostBlocksRoundTrip() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("favourites.toml")
+        try """
+        [[favourite]]
+        name = "postgres"
+        host = "prod"
+        port = 5432
+        """.write(to: url, atomically: true, encoding: .utf8)
+
+        try Favourites.addHost(AutoHost(name: "echo"), to: url)
+        try Favourites.addHost(AutoHost(name: "gpu", excluded: [5432, 22]), to: url)
+        XCTAssertEqual(Favourites.loadHosts(from: url), [AutoHost(name: "echo"), AutoHost(name: "gpu", excluded: [5432, 22])])
+        XCTAssertEqual(try Favourites.load(from: url).count, 1)
+
+        XCTAssertTrue(try Favourites.setExcluded([3000], forHost: "echo", in: url))
+        XCTAssertTrue(try Favourites.setExcluded([], forHost: "gpu", in: url))
+        XCTAssertEqual(Favourites.loadHosts(from: url), [AutoHost(name: "echo", excluded: [3000]), AutoHost(name: "gpu")])
+
+        XCTAssertTrue(try Favourites.removeHost("echo", from: url))
+        XCTAssertFalse(try Favourites.removeHost("nope", from: url))
+        XCTAssertEqual(Favourites.loadHosts(from: url), [AutoHost(name: "gpu")])
+        XCTAssertEqual(try Favourites.load(from: url).map(\.name), ["postgres"])
+    }
+
     func testAddCreatesFileWithTemplate() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

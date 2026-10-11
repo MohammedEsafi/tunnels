@@ -171,6 +171,15 @@ public actor SSHMaster {
         try await control(["-O", "cancel", "-L", spec.sshArgument])
     }
 
+    /// Run a command on the machine over the existing connection.
+    public func run(_ command: String) async throws -> String {
+        let result = try await runner.run(sshPath, arguments: ["-S", socketPath] + SSHMaster.configArguments + ["-o", "BatchMode=yes", alias, "--", command], timeout: 15)
+        guard result.succeeded else {
+            throw SSHError.commandFailed(result.stderr.isEmpty ? "exit \(result.exitCode)" : result.stderr)
+        }
+        return result.stdout
+    }
+
     public func check() async -> Bool {
         guard let result = try? await runner.run(sshPath, arguments: ["-S", socketPath] + SSHMaster.configArguments + ["-O", "check", alias], timeout: 10) else {
             return false

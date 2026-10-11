@@ -10,6 +10,18 @@ public struct Favourite: Equatable, Hashable, Sendable {
     }
 }
 
+/// A machine in all-ports mode: every listener it has gets a forward,
+/// except the excluded ports.
+public struct AutoHost: Equatable, Hashable, Sendable {
+    public var name: String
+    public var excluded: Set<Int>
+
+    public init(name: String, excluded: Set<Int> = []) {
+        self.name = name
+        self.excluded = excluded
+    }
+}
+
 public struct FavouritesError: Error, Equatable, LocalizedError {
     public let problems: [String]
     public var errorDescription: String? { problems.joined(separator: "\n") }
@@ -60,6 +72,26 @@ public enum Favourites {
         }
         let text = try String(contentsOf: url, encoding: .utf8)
         return try parse(text)
+    }
+
+    /// The [[host]] entries: machines in all-ports mode.
+    public static func loadHosts(from url: URL = defaultURL) -> [AutoHost] {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return (try? parseHosts(text)) ?? []
+    }
+
+    public static func parseHosts(_ text: String) throws -> [AutoHost] {
+        let root = try MiniTOML.parse(text)
+        guard let tables = root["host"]?.tables else { return [] }
+        return tables.compactMap { table in
+            guard let name = table["name"]?.string?.trimmingCharacters(in: .whitespaces), !name.isEmpty,
+                  table["all_ports"]?.boolean ?? true else { return nil }
+            let excluded = Set((table["exclude"].flatMap { value -> [Int]? in
+                if case .array(let items) = value { return items.compactMap(\.integer) }
+                return nil
+            }) ?? [])
+            return AutoHost(name: name, excluded: excluded)
+        }
     }
 
     public static func parse(_ text: String) throws -> [Favourite] {
@@ -209,6 +241,70 @@ public extension Favourites {
                 lines.insert(nameLine, at: block.lowerBound + 1)
             }
             try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+            return true
+        }
+        return false
+    }
+
+    // MARK: [[host]] blocks
+
+    public static func addHost(_ host: AutoHost, to url: URL = defaultURL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        var text = (try? String(contentsOf: url, encoding: .utf8)) ?? template
+        if !text.isEmpty && !text.hasSuffix("\n") { text += "\n" }
+        if !text.isEmpty && !text.hasSuffix("\n\n") { text += "\n" }
+        text += "[[host]]\nname = \"\(escape(host.name))\"\nall_ports = true\n"
+        if !host.excluded.isEmpty {
+            text += "exclude = [\(host.excluded.sorted().map(String.init).joined(separator: ", "))]\n"
+        }
+        try text.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    @discardableResult
+    public static func removeHost(_ name: String, from url: URL = defaultURL) throws -> Bool {
+        try editHostBlock(name, in: url) { _ in nil }
+    }
+
+    @discardableResult
+    public static func setExcluded(_ excluded: Set<Int>, forHost name: String, in url: URL = defaultURL) throws -> Bool {
+        try editHostBlock(name, in: url) { lines in
+            var kept = lines.filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("exclude") }
+            if !excluded.isEmpty {
+                kept.append("exclude = [\(excluded.sorted().map(String.init).joined(separator: ", "))]")
+            }
+            return kept
+        }
+    }
+
+    /// Find the [[host]] block with this name and replace its lines (nil removes it).
+    private static func editHostBlock(_ name: String, in url: URL, _ change: ([String]) -> [String]?) throws -> Bool {
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        var lines = text.components(separatedBy: "\n")
+        var blocks: [Range<Int>] = []
+        var start: Int?
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") {
+                if let s = start { blocks.append(s..<index) }
+                start = trimmed.hasPrefix("[[host]]") ? index : nil
+            }
+        }
+        if let s = start { blocks.append(s..<lines.count) }
+        for block in blocks.reversed() {
+            let blockText = lines[block].joined(separator: "\n")
+            guard let parsed = try? MiniTOML.parse(blockText),
+                  let table = parsed["host"]?.tables?.first,
+                  table["name"]?.string == name else { continue }
+            if let replacement = change(Array(lines[block])) {
+                lines.replaceSubrange(block, with: replacement)
+            } else {
+                var lower = block.lowerBound
+                while lower > 0, lines[lower - 1].trimmingCharacters(in: .whitespaces).isEmpty { lower -= 1 }
+                lines.removeSubrange(lower..<block.upperBound)
+            }
+            var result = lines.joined(separator: "\n")
+            if !result.hasSuffix("\n") { result += "\n" }
+            try result.write(to: url, atomically: true, encoding: .utf8)
             return true
         }
         return false

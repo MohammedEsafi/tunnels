@@ -11,6 +11,9 @@ enum DebugSnapshot {
         let delay = Double(ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_DELAY"] ?? "") ?? 6
         let hold = Double(ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_HOLD"] ?? "") ?? 4
         AppModel.shared.persistStateOnQuit = false
+        if let host = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_ALL"], !host.isEmpty {
+            Task { @MainActor in AppModel.shared.enableAllPorts(host) }
+        }
         if ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_TURN_ON"] != nil {
             Task { @MainActor in
                 let model = AppModel.shared

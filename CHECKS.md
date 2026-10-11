@@ -77,6 +77,7 @@ Checked, with the result seen:
 | Quit (menu item, ⌘Q, `kill -TERM`) | every master gets `-O exit`, no ssh left, state.json written |
 | Relaunch | forwards that were on come back |
 | Settings window | start at login toggle, favourites path with Open/Reveal, host count, per-machine logs |
+| All ports on box-a (container without `ss`/`netstat`, so the /proc/net/tcp fallback) | 7777, 8080, 8081, 9999 forwarded within 10 s; `curl localhost:8081/index.json` answers from box-a |
 
 ## Still to check on a real machine
 

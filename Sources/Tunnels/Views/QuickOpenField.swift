@@ -102,6 +102,9 @@ struct QuickOpenField: View {
         case .host(let host):
             text = host.name + ":"
             focused = true
+        case .allPorts(let host):
+            model.enableAllPorts(host)
+            text = ""
         }
     }
 }
@@ -123,6 +126,12 @@ private struct SuggestionRow: View {
                 Text(host.name)
                 Spacer()
                 Text(host.source == .tailscale ? "Tailscale" : "SSH config").foregroundStyle(secondary).font(.system(size: 11))
+            case .allPorts(let host):
+                Text(host)
+                Image(systemName: "infinity").font(.system(size: 11, weight: .semibold)).foregroundStyle(secondary)
+                Text("all ports").foregroundStyle(secondary).font(.system(size: 12))
+                Spacer()
+                Text("↩").foregroundStyle(secondary).font(.system(size: 11))
             case .spec(let spec):
                 Text("Open \(spec.portLabel) on \(spec.machine)")
                 if spec.remoteHost != "localhost" {
