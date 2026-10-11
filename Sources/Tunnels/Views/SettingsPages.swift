@@ -232,7 +232,8 @@ private struct PinnedRow: View {
 /// Machines by name; click one to see its ssh lines. Nothing else.
 struct LogsPage: View {
     @Environment(AppModel.self) private var model
-    @State private var selected: String?
+    @State private var selected: String? = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_LOG"]
+    @State private var textHeight: CGFloat = 0
 
     private var aliases: [String] { model.controller.logs.keys.sorted() }
 
@@ -249,6 +250,8 @@ struct LogsPage: View {
                     selected = selected == alias ? nil : alias
                 }
                 if selected == alias {
+                    // A ScrollView has no intrinsic height in this panel: size it to
+                    // the text, up to a cap, like the other lists.
                     ScrollView {
                         Text((model.controller.logs[alias] ?? []).joined(separator: "\n"))
                             .font(.system(size: 11, design: .monospaced))
@@ -256,8 +259,13 @@ struct LogsPage: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
+                            .background(GeometryReader { proxy in
+                                Color.clear
+                                    .onAppear { textHeight = proxy.size.height }
+                                    .onChange(of: proxy.size.height) { _, next in textHeight = next }
+                            })
                     }
-                    .frame(maxHeight: 240)
+                    .frame(height: min(max(textHeight, 24), 240))
                 }
             }
         }
