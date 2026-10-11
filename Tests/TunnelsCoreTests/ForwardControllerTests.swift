@@ -248,7 +248,8 @@ final class ForwardControllerTests: XCTestCase {
         }
 
         let rows = controller.forwards(on: "box-b").sorted { $0.spec.remotePort < $1.spec.remotePort }
-        XCTAssertEqual(rows.map(\.spec.localPort), [17777, 18080, 9999])
+        // Every port on the machine moves, including 9999 which was free.
+        XCTAssertEqual(rows.map(\.spec.localPort), [17777, 18080, 19999])
         XCTAssertEqual(rows.map(\.spec.remotePort), [7777, 8080, 9999])
         XCTAssertTrue(rows.allSatisfy { $0.state == .active })
         XCTAssertEqual(controller.offsets["box-b"], 10000)
@@ -266,8 +267,17 @@ final class ForwardControllerTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         XCTAssertEqual(controller.offsets["box-c"], 20000)
-        // box-b now holds 9999 plainly, so box-c's 9999 clashes as well.
         XCTAssertEqual(controller.forwards(on: "box-c").map(\.spec.localPort).sorted(), [27777, 28080, 29999])
+
+        // A machine that started plain and clashes later moves everything it has.
+        controller.enableAutoHost("box-d")
+        let deadline3 = Date().addingTimeInterval(5)
+        while Date() < deadline3, controller.forwards(on: "box-d").count < 3 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.offsets["box-d"], 30000)
+        XCTAssertEqual(controller.forwards(on: "box-d").map(\.spec.localPort).sorted(), [37777, 38080, 39999])
+        XCTAssertEqual(assigned.count, 3)
     }
 
     func testAllPortsRemoveEachThenDisableAndEnableAgain() async {

@@ -329,18 +329,20 @@ final class AppModel {
     }
 
     /// From the suggestion, or the question: watch every port on the machine.
-    /// Saying "all ports" explicitly forgets any "not this one" choices; they
-    /// only survive automatic reconnects and relaunches.
+    /// Saying "all ports" explicitly is a fresh start for that machine: it
+    /// forgets "not this one" choices and any offset. Both survive automatic
+    /// reconnects and relaunches otherwise.
     func enableAllPorts(_ alias: String) {
         modeQuestion = nil
         if !isAutoHost(alias) {
             try? Favourites.addHost(AutoHost(name: alias), to: favouritesURL)
         } else {
             try? Favourites.setExcluded([], forHost: alias, in: favouritesURL)
+            try? Favourites.setOffset(nil, forHost: alias, in: favouritesURL)
         }
         reloadFavourites()
-        let offset = autoHosts.first { $0.name == alias }?.offset
-        controller.enableAutoHost(alias, excluded: [], offset: offset)
+        controller.clearOffset(alias)
+        controller.enableAutoHost(alias, excluded: [], offset: nil)
     }
 
     /// At launch: resume watching with the exclusions and offset on file.

@@ -98,11 +98,13 @@ Problems in the file are shown at the top of the popover with an Open button.
 - **When two machines offer the same port.** Only one can be `localhost:8080`.
   The first keeps the plain number. When a discovered port on another
   machine is taken locally, that machine gets an offset, +10000 for the
-  first such machine, +20000 for the next, and every clashing port on it
-  lands on remote plus offset: `18080 → 8080`. Ports that don't clash stay
-  plain. One notification tells you the rule when it first happens; the
-  offset is kept on the host's entry (`offset = 10000`) until you leave
-  all-ports mode. Pinned forwards are never moved: a clash there stays red
+  first such machine, +20000 for the next, and from then on every discovered
+  port on it lands on remote plus offset: `18080 → 8080`, whether or not that
+  particular port clashes, so the rule never depends on which machine
+  connected first. One notification tells you the rule when it first
+  happens. The offset is kept on the host's entry (`offset = 10000`) across
+  reconnects and relaunches; answering "All ports" again is a fresh start and
+  clears it. Pinned forwards are never moved: a clash there stays red
   because you asked for that number.
 - **A forward with nothing behind it.** A pinned forward whose remote port has
   no listener shows an orange circle with the tooltip "Nothing listening on
