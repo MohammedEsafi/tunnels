@@ -54,7 +54,7 @@ public final class Reconnector {
             if controller.machineState(alias) == .connected {
                 loops[alias] = nil
                 reportBack(alias)
-            } else if controller.forwards(on: alias).contains(where: { $0.desiredOn }) {
+            } else if controller.isWanted(alias) {
                 schedule(alias)
             } else {
                 loops[alias] = nil
@@ -104,7 +104,7 @@ public final class Reconnector {
         var lastReason = "Connection dropped"
         defer { nextAttempt[alias] = nil }
         for attempt in 1...max(budget, 1) {
-            guard controller.forwards(on: alias).contains(where: { $0.desiredOn }) else { return }
+            guard controller.isWanted(alias) else { return }
             controller.markDropped(alias: alias, attempt: attempt)
             let delay = delays.isEmpty ? 0 : delays[min(attempt - 1, delays.count - 1)]
             nextAttempt[alias] = Date().addingTimeInterval(delay)

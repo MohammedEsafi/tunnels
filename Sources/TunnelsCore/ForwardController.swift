@@ -185,6 +185,13 @@ public final class ForwardController {
     /// retry the ones that failed (a local port may have freed up).
     public func scan(_ alias: String) async {
         guard autoHosts.contains(alias), !scanning.contains(alias) else { return }
+        // After a drop the reconnector owns the retries, with its backoff and
+        // its give-up; scanning again here would race it and make "is down"
+        // untrue. The next scan runs once it has reconnected.
+        switch machineState(alias) {
+        case .dropped, .failed: return
+        default: break
+        }
         scanning.insert(alias)
         defer { scanning.remove(alias) }
         let master: SSHMaster
@@ -192,6 +199,7 @@ public final class ForwardController {
             master = try await ensureMaster(alias)
         } catch {
             machineFailed(alias, error)
+            if !(error is CancellationError) { onMasterDropped?(alias, error.localizedDescription) }
             return
         }
         // The host can be switched off during any of the awaits below; a scan
@@ -318,7 +326,7 @@ public final class ForwardController {
     /// Re-apply every desired forward on a machine, starting the master if needed.
     public func retry(alias: String) async {
         let wanted = forwards(on: alias).filter { $0.desiredOn }
-        guard !wanted.isEmpty else {
+        guard !wanted.isEmpty || autoHosts.contains(alias) else {
             machineStates[alias] = .disconnected
             return
         }
@@ -593,7 +601,7 @@ public final class ForwardController {
     }
 
     /// A machine is wanted while a forward on it is switched on or it is watched.
-    private func isWanted(_ alias: String) -> Bool {
+    public func isWanted(_ alias: String) -> Bool {
         autoHosts.contains(alias) || forwards(on: alias).contains { $0.desiredOn }
     }
 
@@ -619,7 +627,7 @@ public final class ForwardController {
         masters[alias] = nil
         appendLog(alias, "connection exited (\(code)) last output: \(output.suffix(160))")
         let wanted = forwards(on: alias).filter { $0.desiredOn }
-        if wanted.isEmpty {
+        if wanted.isEmpty && !autoHosts.contains(alias) {
             machineStates[alias] = .disconnected
             return
         }
