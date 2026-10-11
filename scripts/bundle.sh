@@ -20,6 +20,13 @@ rm -rf "$OUT"
 mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Resources"
 cp "$BIN" "$OUT/Contents/MacOS/$APP_NAME"
 
+# App icon: rendered from the SVG once, then reused until the SVG changes.
+ICON="$ROOT/build/AppIcon.icns"
+if [ ! -f "$ICON" ] || [ "$ROOT/Resources/AppIcon.svg" -nt "$ICON" ]; then
+  swift "$ROOT/scripts/makeicon.swift" "$ROOT/Resources/AppIcon.svg" "$ICON" >/dev/null
+fi
+cp "$ICON" "$OUT/Contents/Resources/AppIcon.icns"
+
 cat > "$OUT/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -27,6 +34,7 @@ cat > "$OUT/Contents/Info.plist" <<PLIST
 <dict>
   <key>CFBundleDevelopmentRegion</key><string>en</string>
   <key>CFBundleExecutable</key><string>$APP_NAME</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$APP_NAME</string>

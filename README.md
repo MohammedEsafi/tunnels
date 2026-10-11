@@ -115,7 +115,8 @@ Sources/TunnelsCore   ssh master, forward controller, reconnector, favourites,
 Sources/Tunnels       AppKit status item + Control Center style panel, SwiftUI content
 Sources/tunnelsctl    command-line harness for the core
 Tests/TunnelsCoreTests
-scripts/bundle.sh     builds and signs Tunnels.app
+scripts/bundle.sh     builds and signs Tunnels.app (renders the icon first)
+Resources/AppIcon.svg the app icon; scripts/makeicon.swift turns it into .icns
 ```
 
 Development environment variables (never needed in normal use):
