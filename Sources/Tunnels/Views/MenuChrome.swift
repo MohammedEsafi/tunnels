@@ -64,6 +64,8 @@ struct RowIcon: View {
                 .foregroundStyle(tint == nil ? Color.primary.opacity(0.7) : .white)
         }
         .frame(width: 22, height: 22)
+        // The row's text and switch carry the meaning; the circle is decoration.
+        .accessibilityHidden(true)
     }
 }
 
