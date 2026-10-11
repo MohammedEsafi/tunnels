@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import TunnelsCore
 
 /// Development aid: with TUNNELS_SNAPSHOT=1 in the environment the app opens
 /// the real menu panel at the top-left of the screen a few seconds after
@@ -50,6 +51,9 @@ enum DebugSnapshot {
             DebugLog.log("snapshot: forwards=\(model.controller.forwards.map { "\($0.spec.machine):\($0.spec.localPort) \($0.state) disc=\($0.isDiscovered)" }) machines=\(model.controller.machines) auto=\(model.controller.autoHosts) excluded=\(model.controller.autoExcluded) states=\(model.controller.machineStates)")
             for (alias, lines) in model.controller.logs { DebugLog.log("log \(alias):\n  " + lines.joined(separator: "\n  ")) }
             let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+            if let edit = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_EDITPORT"], let spec = QuickOpen.parse(edit) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { model.debugEditPort = spec }
+            }
             statusItem.openForSnapshot(topLeft: NSPoint(x: 40, y: screen.height - 60))
             switch ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_PAGE"] {
             case "settings": model.menuPage = .settings
