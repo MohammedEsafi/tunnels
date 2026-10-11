@@ -280,6 +280,33 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(assigned.count, 3)
     }
 
+    func testScanMovesPlainRowsOnceAMachineHasAnOffset() async {
+        let listeners = "LISTEN 0 1 127.0.0.1:8080 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8081 0.0.0.0:*"
+        runner.script = { args in
+            if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
+            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
+            return ProcessResult(exitCode: 0)
+        }
+        controller.discoveryInterval = 3600
+        // Started plain, no clashes.
+        controller.enableAutoHost("box-a")
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline, controller.forwards(on: "box-a").count < 2 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.forwards(on: "box-a").map(\.spec.localPort).sorted(), [8080, 8081])
+
+        // Later the machine is given an offset (as a restart from file would).
+        await controller.disableAutoHost("box-a")
+        controller.enableAutoHost("box-a", offset: 10000)
+        let deadline2 = Date().addingTimeInterval(5)
+        while Date() < deadline2, controller.forwards(on: "box-a").count < 2 {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(controller.forwards(on: "box-a").map(\.spec.localPort).sorted(), [18080, 18081])
+        XCTAssertTrue(controller.forwards(on: "box-a").allSatisfy { $0.state == .active })
+    }
+
     func testAllPortsRemoveEachThenDisableAndEnableAgain() async {
         let listeners = "LISTEN 0 1 127.0.0.1:7777 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8080 0.0.0.0:*"
         runner.script = { args in
