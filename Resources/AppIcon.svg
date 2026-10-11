@@ -1,25 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- Tunnels app icon: a tilted ring, the tunnel mouth seen at an angle, on a
-       near-black tile. macOS masks the tile to its squircle; the inset keeps
-       the artwork inside the mask like Apple's own icons. -->
+  <!-- Tunnels app icon: three arches receding into the tunnel, brightest
+       nearest, on a near-black tile. macOS masks the tile to its squircle; the
+       inset keeps the artwork inside the mask like Apple's own icons. -->
   <defs>
     <radialGradient id="bg" cx="0.5" cy="0.35" r="0.8">
       <stop offset="0" stop-color="#232326"/>
       <stop offset="1" stop-color="#0E0E10"/>
     </radialGradient>
-    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#5DA9FF"/>
-      <stop offset="1" stop-color="#1E6BFF"/>
-    </linearGradient>
-    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"/>
-      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
-    </linearGradient>
   </defs>
   <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/>
-  <g transform="rotate(-28 512 512)">
-    <ellipse cx="512" cy="512" rx="268" ry="186" fill="none" stroke="url(#ring)" stroke-width="94"/>
-    <ellipse cx="512" cy="512" rx="268" ry="186" fill="none" stroke="url(#shade)" stroke-width="94"/>
+  <g fill="none" stroke="#2ECC71" stroke-linecap="round" stroke-width="68">
+    <path d="M254 716 V562 a258 258 0 0 1 516 0 V716" opacity="0.42"/>
+    <path d="M357 716 V582 a155 155 0 0 1 310 0 V716" opacity="0.72"/>
+    <path d="M460 716 V602 a52 52 0 0 1 104 0 V716"/>
   </g>
 </svg>
