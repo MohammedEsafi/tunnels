@@ -188,12 +188,13 @@ public final class ForwardController {
         do {
             master = try await ensureMaster(alias)
         } catch {
-            let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
-            machineStates[alias] = .failed(reason: reason)
+            machineFailed(alias, error)
             return
         }
-        guard let output = try? await master.run(PortDiscovery.command) else {
-            appendLog(alias, "scan: could not list ports")
+        // The host can be switched off during any of the awaits below; a scan
+        // that carried on would reopen what the switch just closed.
+        guard autoHosts.contains(alias), let output = try? await master.run(PortDiscovery.command), autoHosts.contains(alias) else {
+            if autoHosts.contains(alias) { appendLog(alias, "scan: could not list ports") }
             return
         }
         let excluded = autoExcluded[alias] ?? []
@@ -210,12 +211,14 @@ public final class ForwardController {
             forwards.removeAll { $0.id == forward.id }
         }
         for port in wanted.sorted() where !current.contains(where: { $0.spec.remotePort == port }) {
+            guard autoHosts.contains(alias) else { return }
             await openDiscovered(port, on: alias)
         }
         // Enforce the rule every time, whatever history produced: with an
         // offset, no discovered row may sit on a plain number; and a failed
         // row gets another go (its local port may have freed up).
         for forward in forwards(on: alias) where forward.isDiscovered {
+            guard autoHosts.contains(alias) else { return }
             let wrongNumber = offsets[alias] != nil && forward.spec.localPort == forward.spec.remotePort
             var failed = false
             if case .error = forward.state { failed = true }
@@ -319,9 +322,7 @@ public final class ForwardController {
         do {
             _ = try await ensureMaster(alias)
         } catch {
-            let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
-            machineStates[alias] = .failed(reason: reason)
-            for forward in wanted { update(forward.id) { $0.state = .dropped } }
+            machineFailed(alias, error)
             return
         }
         for forward in wanted {
@@ -391,6 +392,7 @@ public final class ForwardController {
     public func shutdown() async {
         for (_, loop) in discoveryLoops { loop.cancel() }
         discoveryLoops = [:]
+        for (_, starting) in startingMasters { starting.cancel() }
         // Forget the masters first so their exit callbacks are not taken for drops.
         let current = masters
         masters = [:]
@@ -408,6 +410,7 @@ public final class ForwardController {
     public func shutdownNow() {
         for (_, loop) in discoveryLoops { loop.cancel() }
         discoveryLoops = [:]
+        for (_, starting) in startingMasters { starting.cancel() }
         let current = masters
         masters = [:]
         for (alias, master) in current {
@@ -438,12 +441,7 @@ public final class ForwardController {
         do {
             master = try await ensureMaster(forward.spec.machine)
         } catch {
-            // Master failed: every desired forward on the machine is affected.
-            let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
-            machineStates[forward.spec.machine] = .failed(reason: reason)
-            for f in forwards(on: forward.spec.machine) where f.desiredOn {
-                update(f.id) { $0.state = .dropped }
-            }
+            machineFailed(forward.spec.machine, error)
             return
         }
         guard forwards.first(where: { $0.id == forward.id })?.desiredOn == true else { return }
@@ -453,7 +451,7 @@ public final class ForwardController {
             appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) open")
             if !forward.isDiscovered { await probe(alias: forward.spec.machine) }
         } catch {
-            let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
+            let reason = error.localizedDescription
             update(forward.id) { $0.state = .error(reason) }
             appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) failed: \(reason)")
             if reason == "Local port in use", !forward.isDiscovered, forward.spec.localPort == forward.spec.remotePort {
@@ -554,6 +552,12 @@ public final class ForwardController {
                 }
             )
             try await master.start()
+            // Everything that wanted this connection may have been switched
+            // off while it was starting; do not keep an idle master around.
+            guard self.isWanted(alias) else {
+                await master.stop()
+                throw CancellationError()
+            }
             return master
         }
         startingMasters[alias] = task
@@ -566,8 +570,26 @@ public final class ForwardController {
             return master
         } catch {
             masters[alias] = nil
-            appendLog(alias, "failed: \((error as? SSHError)?.errorDescription ?? error.localizedDescription)")
+            if !(error is CancellationError) { appendLog(alias, "failed: \(error.localizedDescription)") }
             throw error
+        }
+    }
+
+    /// A machine is wanted while a forward on it is switched on or it is watched.
+    private func isWanted(_ alias: String) -> Bool {
+        autoHosts.contains(alias) || forwards(on: alias).contains { $0.desiredOn }
+    }
+
+    /// The master could not be had: a cancelled start is not a failure, anything
+    /// else is, and every desired forward on the machine shows it.
+    private func machineFailed(_ alias: String, _ error: Error) {
+        if error is CancellationError {
+            machineStates[alias] = .disconnected
+            return
+        }
+        machineStates[alias] = .failed(reason: error.localizedDescription)
+        for forward in forwards(on: alias) where forward.desiredOn {
+            update(forward.id) { $0.state = .dropped }
         }
     }
 

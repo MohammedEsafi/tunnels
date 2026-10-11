@@ -40,11 +40,9 @@ final class KnownDefectsTests: XCTestCase {
         gate.open()
         try? await Task.sleep(nanoseconds: 300_000_000)
 
-        XCTExpectFailure("P0-5: the in-flight scan restarts the master and re-adds the rows") {
-            XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
-            XCTAssertEqual(controller.machineState("gpu-box"), .disconnected)
-            XCTAssertTrue(runner.runningMasters.isEmpty)
-        }
+        XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
+        XCTAssertEqual(controller.machineState("gpu-box"), .disconnected)
+        XCTAssertTrue(runner.runningMasters.isEmpty)
     }
 
     // P0-6, first half
@@ -94,10 +92,8 @@ final class KnownDefectsTests: XCTestCase {
         runner.masterConnects = true
         try? await Task.sleep(nanoseconds: 700_000_000)
 
-        XCTExpectFailure("P0-7: the starting master is recorded as connected with nothing desired") {
-            XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)
-            XCTAssertTrue(runner.runningMasters.isEmpty)
-        }
+        XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)
+        XCTAssertTrue(runner.runningMasters.isEmpty)
     }
 
     // P0-8
