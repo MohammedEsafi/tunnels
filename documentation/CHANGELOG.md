@@ -1,8 +1,13 @@
+---
+name: tunnels-changelog
+description: What changed in each version of Tunnels, in Keep a Changelog form. Use when writing release notes, when adding a line for a change you made, or when checking whether a behaviour is new.
+---
+
 # Changelog
 
-All notable changes to this project are recorded here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
-[semantic versioning](https://semver.org/).
+Add a line under Unreleased with every user-visible change, under Security,
+Fixed, Added or Changed. On release, the lines move under the version and
+date. Versions follow [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
@@ -42,6 +47,8 @@ All notable changes to this project are recorded here. The format follows
   App, Model, Views and Debug in the app; views read through `AppModel`; the
   core takes its ssh settings as `SSHOptions` instead of reading the
   environment.
+- Documentation lives in `documentation/`, each file with a front matter that
+  says when to read it.
 
 ## [0.1.0] — 2026-10-11
 
