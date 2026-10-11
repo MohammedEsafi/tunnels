@@ -8,8 +8,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="${1:-release}"
 APP_NAME="Tunnels"
 BUNDLE_ID="com.mohammedesafi.tunnels"
-VERSION="0.1.0"
-BUILD_NUMBER="$(date +%Y%m%d%H%M)"
+# Version from the nearest v* tag; a commit after it reads 0.1.0-3-gabc1234,
+# a tree without tags reads 0.0.0+abc1234. The build number is the commit count.
+VERSION="$( (git -C "$ROOT" describe --tags --match 'v*' --dirty 2>/dev/null || true) | sed 's/^v//')"
+[ -n "$VERSION" ] || VERSION="0.0.0+$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo dev)"
+BUILD_NUMBER="$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null || date +%Y%m%d%H%M)"
 OUT="$ROOT/build/$APP_NAME.app"
 
 cd "$ROOT"
@@ -42,10 +45,12 @@ cat > "$OUT/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
-  <key>NSHumanReadableCopyright</key><string>Personal tool.</string>
+  <key>NSHumanReadableCopyright</key><string>© 2026 Mohammed Esafi. MIT License.</string>
+  <key>NSSupportsAutomaticTermination</key><false/>
 </dict>
 </plist>
 PLIST
