@@ -17,6 +17,15 @@ printf '{"service":"api","port":8081,"host":"%s"}\n' "$HOST" > /srv/api/index.js
 
 ( cd /srv/web && exec python3 -m http.server 8080 --bind 0.0.0.0 >/var/log/web.log 2>&1 ) &
 ( cd /srv/api && exec python3 -m http.server 8081 --bind 0.0.0.0 >/var/log/api.log 2>&1 ) &
-( while true; do nc -l -p 7777 -k -e /bin/cat 2>/dev/null || nc -l -p 7777 -k; done ) &
+# netcat-openbsd has no -e, so the echo service is a few lines of python.
+( exec python3 -c '
+import socketserver
+class Echo(socketserver.BaseRequestHandler):
+    def handle(self):
+        while data := self.request.recv(4096):
+            self.request.sendall(data)
+socketserver.ThreadingTCPServer.allow_reuse_address = True
+socketserver.ThreadingTCPServer(("0.0.0.0", 7777), Echo).serve_forever()
+' >/var/log/echo.log 2>&1 ) &
 ( while true; do nc -l -p 9999 -k >/dev/null 2>&1; done ) &
 wait

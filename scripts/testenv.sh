@@ -42,17 +42,26 @@ EOF
 
 remove_block() {
   [ -f "$CONFIG" ] || return 0
-  if grep -qF "$MARK_START" "$CONFIG"; then
-    local tmp; tmp="$(mktemp)"
-    awk -v s="$MARK_START" -v e="$MARK_END" '
-      $0==s {skip=1; next}
-      $0==e {skip=0; next}
-      !skip {print}
-    ' "$CONFIG" > "$tmp"
-    cat "$tmp" > "$CONFIG"
-    rm -f "$tmp"
-    echo "removed Host blocks from $CONFIG"
+  grep -qF "$MARK_START" "$CONFIG" || return 0
+  # Only a complete, single block is removed: a start marker without its end
+  # (or two of them) would otherwise take everything below it with it.
+  local starts ends
+  starts="$(grep -cF "$MARK_START" "$CONFIG")"
+  ends="$(grep -cF "$MARK_END" "$CONFIG")"
+  if [ "$starts" != "1" ] || [ "$ends" != "1" ]; then
+    echo "refusing to edit $CONFIG: expected one '$MARK_START' and one '$MARK_END' (found $starts and $ends); fix it by hand" >&2
+    exit 1
   fi
+  cp "$CONFIG" "$CONFIG.tunnels-backup"
+  local tmp; tmp="$(mktemp)"
+  awk -v s="$MARK_START" -v e="$MARK_END" '
+    $0==s {skip=1; next}
+    $0==e {skip=0; next}
+    !skip {print}
+  ' "$CONFIG" > "$tmp"
+  cat "$tmp" > "$CONFIG"
+  rm -f "$tmp"
+  echo "removed Host blocks from $CONFIG (backup: $CONFIG.tunnels-backup)"
 }
 
 add_block() {
