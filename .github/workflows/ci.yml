@@ -30,7 +30,9 @@ jobs:
         run: xcrun swift-format lint --strict --recursive Sources Tests
 
       - name: Shell scripts
-        run: shellcheck scripts/*.sh testenv/*.sh
+        run: |
+          brew install shellcheck
+          shellcheck scripts/*.sh testenv/*.sh
 
       - name: Bundle
         run: scripts/bundle.sh
