@@ -68,8 +68,11 @@ add_block() {
   mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
   touch "$CONFIG"; chmod 600 "$CONFIG"
   remove_block >/dev/null
+  # Decide about the separating newline before the block opens the file.
+  local needs_newline=""
+  [ -s "$CONFIG" ] && [ -n "$(tail -c1 "$CONFIG")" ] && needs_newline="yes"
   {
-    [ -s "$CONFIG" ] && [ -n "$(tail -c1 "$CONFIG")" ] && echo
+    [ -n "$needs_newline" ] && echo
     echo "$MARK_START"
     host_block box-a 2222
     echo
@@ -86,7 +89,7 @@ case "${1:-status}" in
     rm -f "$KNOWN"
     (cd "$ENV" && docker compose up -d --build)
     add_block
-    for i in $(seq 1 20); do
+    for _ in $(seq 1 20); do
       ssh -o ConnectTimeout=2 -o BatchMode=yes box-a true 2>/dev/null && break
       sleep 1
     done
