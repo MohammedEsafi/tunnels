@@ -82,8 +82,12 @@ Problems in the file are shown at the top of the popover with an Open button.
   Type `host:port`,
   `host:local:remote`, or `host:local:remoteHost:remote` and press Return.
   Typing part of a favourite name or a Host alias shows suggestions; arrow
-  keys and Return pick one. Ad-hoc forwards appear under their machine and
-  can be removed with the × that shows on hover.
+  keys and Return pick one. Ad-hoc forwards appear under their machine.
+- **Row menu.** Right-click a forward for Copy, Open in Browser, Rename…,
+  Change Ports… and Close and Forget. Change Ports… turns the port column into
+  one field in the same `local:remote` grammar; a lone number means both.
+  Return applies, Escape cancels, and flipping the switch mid-edit applies the
+  edit first.
 - **All ports.** Type a machine name alone and pick the `all ports` row.
   The app then watches that machine over the same connection, every five
   seconds, and forwards every TCP listener it finds (1024 up to 32767, below

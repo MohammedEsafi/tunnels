@@ -335,6 +335,13 @@ public extension Favourites {
     /// `movedByApp` records whether the app chose the new number.
     @discardableResult
     static func changeLocalPort(_ spec: ForwardSpec, to newPort: Int, movedByApp: Bool = false, in url: URL = defaultURL) throws -> Bool {
+        try changePorts(spec, local: newPort, remote: spec.remotePort, movedByApp: movedByApp, in: url)
+    }
+
+    /// Change the local and remote ports of the [[favourite]] block matching
+    /// host and port. `remote_port` is written only when it differs from `port`.
+    @discardableResult
+    static func changePorts(_ spec: ForwardSpec, local: Int, remote: Int, movedByApp: Bool = false, in url: URL = defaultURL) throws -> Bool {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
         var lines = text.components(separatedBy: "\n")
         var blocks: [Range<Int>] = []
@@ -347,25 +354,39 @@ public extension Favourites {
             }
         }
         if let s = start { blocks.append(s..<lines.count) }
+        func key(_ line: String) -> String {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return String(trimmed.prefix { $0 != "=" && $0 != " " })
+        }
         for block in blocks {
             let blockText = lines[block].joined(separator: "\n")
             guard let parsed = try? MiniTOML.parse(blockText),
                   let table = parsed["favourite"]?.tables?.first,
                   table["host"]?.string == spec.machine,
                   table["port"]?.integer == spec.localPort else { continue }
-            guard let portLine = lines[block].firstIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("port") }) else { continue }
-            lines[portLine] = "port = \(newPort)"
-            // The remote stays what it was; spell it out if it no longer equals the local port.
-            let hasRemote = lines[block].contains { $0.trimmingCharacters(in: .whitespaces).hasPrefix("remote_port") }
-            if !hasRemote && newPort != spec.remotePort {
-                lines.insert("remote_port = \(spec.remotePort)", at: portLine + 1)
+            guard let portLine = lines[block].firstIndex(where: { key($0) == "port" }) else { continue }
+            // The block range shifts as lines come and go; keep it current.
+            var range = block
+            lines[portLine] = "port = \(local)"
+            // The remote is spelled out only when it differs from the local port.
+            if let remoteLine = lines[range].firstIndex(where: { key($0) == "remote_port" }) {
+                if remote == local {
+                    lines.remove(at: remoteLine)
+                    range = range.lowerBound..<(range.upperBound - 1)
+                } else {
+                    lines[remoteLine] = "remote_port = \(remote)"
+                }
+            } else if remote != local {
+                lines.insert("remote_port = \(remote)", at: portLine + 1)
+                range = range.lowerBound..<(range.upperBound + 1)
             }
             // The moved flag lives right after the port lines.
-            if let movedLine = lines[block].firstIndex(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("moved") }) {
+            if let movedLine = lines[range].firstIndex(where: { key($0) == "moved" }) {
                 lines.remove(at: movedLine)
+                range = range.lowerBound..<(range.upperBound - 1)
             }
             if movedByApp {
-                let after = lines[block].lastIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("port") || $0.trimmingCharacters(in: .whitespaces).hasPrefix("remote_port") } ?? portLine
+                let after = lines[range].lastIndex { key($0) == "port" || key($0) == "remote_port" } ?? portLine
                 lines.insert("moved = true", at: after + 1)
             }
             try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)

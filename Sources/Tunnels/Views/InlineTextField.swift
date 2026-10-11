@@ -9,6 +9,8 @@ struct InlineTextField: NSViewRepresentable {
     var placeholder: String
     var onCommit: () -> Void
     var onCancel: () -> Void
+    /// Characters to pre-select; the whole text when nil.
+    var selection: NSRange?
 
     func makeNSView(context: Context) -> NSTextField {
         let field = NSTextField(string: text)
@@ -25,7 +27,7 @@ struct InlineTextField: NSViewRepresentable {
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         DispatchQueue.main.async {
             field.window?.makeFirstResponder(field)
-            field.currentEditor()?.selectAll(nil)
+            if let range = selection { field.currentEditor()?.selectedRange = range } else { field.currentEditor()?.selectAll(nil) }
         }
         return field
     }
