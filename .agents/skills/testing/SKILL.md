@@ -82,7 +82,7 @@ The app has no unit tests; the drills cover it. Run the debug bundle with
 | Close and Forget on a discovered row of an offset machine | the row goes and stays gone; `exclude` holds the remote number |
 | Switch a watched machine off during a scan | it stays off |
 | Stop box-a for a minute, let the app give up, then All Ports on box-a again | it reconnects |
-| `ssh -N -L 3999:localhost:7777 box-b` in a terminal | shows under box-b with a terminal icon; Stop works by hover, right-click and VoiceOver |
+| `ssh -N -L 3999:localhost:7777 box-b` in a terminal | shows under box-b as a hollow circle with no switch; Stop works by right-click and VoiceOver |
 | Quit (menu, ⌘Q, `kill -TERM`, `kill -INT`) | `pgrep -f "ssh -N -M"` is empty; `state.json` updated |
 | `kill -9` the app, relaunch | old masters gone, forwards back |
 | Open the app twice | the second copy exits at once |

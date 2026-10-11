@@ -30,6 +30,9 @@ date. Versions follow [semantic versioning](https://semver.org/).
 - A plain-port retry switched off while ssh was adding it comes down instead
   of ending active with its switch off.
 - A favourites file that cannot be written says so in the menu's problems row.
+- A forward started outside the app shows as a hollow circle with the same
+  arrows as other rows, its mapping always visible; Stop moved from a hover
+  button to the right-click menu.
 - A remote that refuses a forward is reported as such instead of "Local port
   in use"; UDP sockets on a macOS remote are no longer forwarded.
 - Quit asks every ssh connection to close at once and also handles SIGINT and

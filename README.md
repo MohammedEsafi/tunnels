@@ -4,7 +4,7 @@ A macOS menu bar app that keeps SSH port forwards open for you. Click the
 icon, switch a forward on, and it stays up through sleep, Wi-Fi changes and
 dropped connections.
 
-![The Tunnels panel: forwards grouped by machine with switches; a machine reconnecting; the field with suggestions; the inline port editor](.github/images/panel.png)
+![The Tunnels panel: on the left, forwards grouped by machine with switches, a watched machine on an offset and a forward started outside the app; on the right, the field with suggestions](.github/images/panel.png)
 
 - Uses the `ssh` you already have, the Host aliases already in
   `~/.ssh/config` (and Tailscale names), and the keys already in your agent.
