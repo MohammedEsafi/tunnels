@@ -196,6 +196,32 @@ final class FavouritesTests: XCTestCase {
         XCTAssertEqual(try Favourites.load(from: url).map(\.name), ["postgres"])
     }
 
+    func testChangeLocalPortKeepsRemote() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("favourites.toml")
+        try """
+        [[favourite]]
+        name = "web"
+        host = "box-b"
+        port = 8080
+
+        [[favourite]]
+        name = "api"
+        host = "box-b"
+        port = 18081
+        remote_port = 8081
+        """.write(to: url, atomically: true, encoding: .utf8)
+
+        XCTAssertTrue(try Favourites.changeLocalPort(ForwardSpec(machine: "box-b", localPort: 8080), to: 18080, in: url))
+        XCTAssertTrue(try Favourites.changeLocalPort(ForwardSpec(machine: "box-b", localPort: 18081, remotePort: 8081), to: 28081, in: url))
+        let loaded = try Favourites.load(from: url)
+        XCTAssertEqual(loaded[0].spec, ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8080))
+        XCTAssertEqual(loaded[1].spec, ForwardSpec(machine: "box-b", localPort: 28081, remotePort: 8081))
+        XCTAssertFalse(try Favourites.changeLocalPort(ForwardSpec(machine: "nope", localPort: 1), to: 2, in: url))
+    }
+
     func testAddCreatesFileWithTemplate() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

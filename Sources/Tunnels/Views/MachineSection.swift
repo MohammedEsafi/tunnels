@@ -14,9 +14,6 @@ struct MachineSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            if model.modeQuestion == alias {
-                question
-            }
             ForEach(forwards) { forward in
                 ForwardRow(forward: forward)
             }
@@ -42,7 +39,7 @@ struct MachineSection: View {
             Spacer(minLength: 4)
             if !forwards.isEmpty || isAuto {
                 Toggle("", isOn: Binding(
-                    get: { forwards.contains { $0.desiredOn } || model.isWatching(alias) || model.modeQuestion == alias },
+                    get: { forwards.contains { $0.desiredOn } || model.isWatching(alias) },
                     set: { model.setMachine(alias, on: $0) }
                 ))
                 .toggleStyle(.switch)
@@ -54,22 +51,31 @@ struct MachineSection: View {
         .padding(.horizontal, 10)
         .frame(height: 30)
         .padding(.top, 4)
+        .contentShape(Rectangle())
+        .contextMenu { hostMenu }
     }
 
-    /// Asked when an all-ports host is switched on. "Pinned only" is also how
-    /// you leave all-ports mode: the host becomes an ordinary one.
-    private var question: some View {
-        HStack(spacing: 8) {
-            Button("All ports") { model.enableAllPorts(alias) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .keyboardShortcut(.defaultAction)
-            Button("Pinned only") { model.enablePinnedOnly(alias) }
-                .controlSize(.small)
-            Spacer()
+    @ViewBuilder
+    private var hostMenu: some View {
+        Button {
+            model.enableAllPorts(alias)
+        } label: {
+            if isAuto { Label("All Ports", systemImage: "checkmark") } else { Text("All Ports") }
         }
-        .padding(.horizontal, 10)
-        .frame(height: 30)
+        Button {
+            model.enablePinnedOnly(alias)
+        } label: {
+            if isAuto { Text("Pinned Ports Only") } else { Label("Pinned Ports Only", systemImage: "checkmark") }
+        }
+        .disabled(!isAuto)
+        Divider()
+        Button("Copy ssh Command") { model.copySSHCommand(alias) }
+            .disabled(!forwards.contains { $0.desiredOn })
+        Button("Show Log") { model.showLog(alias) }
+            .disabled(model.controller.logs[alias] == nil)
+        Divider()
+        Button("Forget Machine") { model.forgetMachine(alias) }
+            .disabled(forwards.isEmpty && !isAuto)
     }
 
 }

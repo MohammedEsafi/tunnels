@@ -72,6 +72,7 @@ public final class ForwardController {
                 var kept = existing
                 kept.name = item.name
                 kept.isFavourite = true
+                kept.isDiscovered = false   // pinned now; discovery leaves it alone
                 next.append(kept)
             } else {
                 next.append(Forward(spec: item.spec, name: item.name, isFavourite: true))

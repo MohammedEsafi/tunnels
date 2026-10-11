@@ -47,7 +47,7 @@ enum DebugSnapshot {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             let model = AppModel.shared
-            DebugLog.log("snapshot: forwards=\(model.controller.forwards.map { "\($0.spec.machine):\($0.spec.localPort) \($0.state) disc=\($0.isDiscovered)" }) machines=\(model.controller.machines) auto=\(model.controller.autoHosts) excluded=\(model.controller.autoExcluded) states=\(model.controller.machineStates) question=\(String(describing: model.modeQuestion))")
+            DebugLog.log("snapshot: forwards=\(model.controller.forwards.map { "\($0.spec.machine):\($0.spec.localPort) \($0.state) disc=\($0.isDiscovered)" }) machines=\(model.controller.machines) auto=\(model.controller.autoHosts) excluded=\(model.controller.autoExcluded) states=\(model.controller.machineStates)")
             for (alias, lines) in model.controller.logs { DebugLog.log("log \(alias):\n  " + lines.joined(separator: "\n  ")) }
             let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             statusItem.openForSnapshot(topLeft: NSPoint(x: 40, y: screen.height - 60))
