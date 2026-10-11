@@ -229,9 +229,11 @@ public final class ForwardController {
         do {
             try await master.addForward(forward.spec)
             update(forward.id) { $0.state = .active }
+            appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) open")
         } catch {
             let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
             update(forward.id) { $0.state = .error(reason) }
+            appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) failed: \(reason)")
         }
     }
 
