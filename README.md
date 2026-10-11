@@ -42,10 +42,11 @@ login, notifications and Connection Logs.
 
 ## Skills
 
-The documentation is a set of skills in [`.agents/skills/`](.agents/skills)
-(`.claude/skills` links to it). Open the repository in Claude Code or another
-agent that reads them and ask; or read the `SKILL.md` files directly, they
-are written for people too.
+The documentation is a set of agent skills in
+[`.agents/skills/`](.agents/skills), one `SKILL.md` per task. Open the
+repository in an agent that reads that folder (Claude Code does, through the
+`.claude/skills` link) and ask; or read the files directly, they are written
+for people too.
 
 | Skill | Ask it for |
 |---|---|

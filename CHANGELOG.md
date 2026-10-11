@@ -42,7 +42,7 @@ date. Versions follow [semantic versioning](https://semver.org/).
   App, Model, Views and Debug in the app; views read through `AppModel`; the
   core takes its ssh settings as `SSHOptions` instead of reading the
   environment.
-- The documentation is a set of Claude Code skills under `.agents/skills/` (linked from `.claude/skills/`),
+- The documentation is a set of agent skills under `.agents/skills/` (`.claude/skills` links to it),
   so a person or an agent can ask for usage help, run the tests, or follow
   the contribution and release steps from the repository itself.
 
