@@ -121,7 +121,7 @@ private struct SuggestionRow: View {
                 Text(favourite.spec.portLabel).foregroundStyle(secondary).font(.system(size: 12)).monospacedDigit()
                 Text(favourite.spec.machine).foregroundStyle(secondary).font(.system(size: 11))
                 Spacer()
-                Text("Favourite").foregroundStyle(secondary).font(.system(size: 11))
+                Text("Forward").foregroundStyle(secondary).font(.system(size: 11))
             case .host(let host):
                 Text(host.name)
                 Spacer()

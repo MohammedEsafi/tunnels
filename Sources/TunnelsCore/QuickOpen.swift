@@ -42,14 +42,12 @@ public enum QuickOpen {
         }
     }
 
-    /// With empty input: every favourite then every host, so a focused empty
-    /// field doubles as a list of what you can open.
-    public static func suggestions(for input: String, favourites: [Favourite], hosts: [HostEntry], limit: Int = 6) -> [Suggestion] {
+    /// With empty input: the machines you can start from. Remembered forwards
+    /// are already listed in the menu, so they only appear once you type.
+    public static func suggestions(for input: String, favourites: [Favourite], hosts: [HostEntry], limit: Int = 8) -> [Suggestion] {
         let text = input.trimmingCharacters(in: .whitespaces)
         if text.isEmpty {
-            var all: [Suggestion] = favourites.map { .favourite($0) }
-            for host in hosts where !all.contains(.host(host)) { all.append(.host(host)) }
-            return Array(all.prefix(limit))
+            return Array(hosts.map { Suggestion.host($0) }.prefix(limit))
         }
         var result: [Suggestion] = []
 

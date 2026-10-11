@@ -76,8 +76,9 @@ Problems in the file are shown at the top of the popover with an Open button.
 - **Ports.** The right-hand column shows the local port, and `28080 → 18080`
   only when the remote port differs. Click it to copy `localhost:<port>`.
 - **Adding.** The + button (or ⌘N) shows the field. With the field empty it
-  lists your favourites and machines: Host aliases from `~/.ssh/config` plus
-  Tailscale peers when the `tailscale` CLI is installed (offline ones are dimmed).
+  lists your machines: Host aliases from `~/.ssh/config` plus Tailscale peers
+  when the `tailscale` CLI is installed (offline ones are dimmed). Typing
+  matches machines and remembered forwards by name.
   Type `host:port`,
   `host:local:remote`, or `host:local:remoteHost:remote` and press Return.
   Typing part of a favourite name or a Host alias shows suggestions; arrow
