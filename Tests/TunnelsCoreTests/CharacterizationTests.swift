@@ -47,6 +47,19 @@ final class ControllerLifecycleTests: XCTestCase {
         XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)
     }
 
+    func testShutdownNowMarksEverythingOffAndKeepsDesiredState() async {
+        await controller.setForward(id: controller.forwards[0].id, on: true)
+        await controller.setForward(id: controller.forwards[1].id, on: true)
+
+        let started = Date()
+        controller.shutdownNow()
+
+        XCTAssertLessThan(Date().timeIntervalSince(started), 2.5, "exits are requested in parallel, with a cap")
+        XCTAssertTrue(controller.forwards.allSatisfy { $0.desiredOn })
+        XCTAssertTrue(controller.forwards.allSatisfy { $0.state == .off })
+        XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)
+    }
+
     func testScanLeavesPinnedRemotePortsAlone() async {
         await controller.setForward(id: controller.forwards[0].id, on: true)
         runner.script = { args in

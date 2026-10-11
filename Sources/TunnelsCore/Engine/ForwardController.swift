@@ -260,10 +260,18 @@ public final class ForwardController {
         for (_, starting) in startingMasters { starting.cancel() }
         let current = masters
         masters = [:]
-        for (alias, master) in current {
-            master.requestExitNow()
-            machineStates[alias] = .disconnected
+        for alias in current.keys { machineStates[alias] = .disconnected }
+        // Every master is asked to exit at once: logout and shutdown give the
+        // process only a few seconds before SIGKILL, not a few per machine.
+        let group = DispatchGroup()
+        for master in current.values {
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                master.requestExitNow()
+                group.leave()
+            }
         }
+        _ = group.wait(timeout: .now() + 2.5)
         for index in forwards.indices where forwards[index].state != .off {
             forwards[index].state = .off
         }

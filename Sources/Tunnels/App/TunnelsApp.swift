@@ -31,7 +31,7 @@ enum TunnelsMain {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel?
     private var statusItem: StatusItemController?
-    private var termSource: DispatchSourceSignal?
+    private var signalSources: [DispatchSourceSignal] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let model = AppModel()
@@ -40,16 +40,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = controller
         DebugSnapshot.scheduleIfRequested(model: model, statusItem: controller)
 
-        // A plain SIGTERM (kill, logout, pkill) skips applicationShouldTerminate
-        // and would orphan the ssh masters. Route it through the same cleanup.
-        signal(SIGTERM, SIG_IGN)
-        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
-        source.setEventHandler {
-            model.prepareForQuitNow()
-            exit(0)
+        // A signal (kill, logout, pkill, Ctrl-C in a terminal) skips
+        // applicationShouldTerminate and would orphan the ssh masters. Route
+        // each one through the same cleanup.
+        for number in [SIGTERM, SIGINT, SIGHUP] {
+            signal(number, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: number, queue: .main)
+            source.setEventHandler {
+                model.prepareForQuitNow()
+                exit(0)
+            }
+            source.resume()
+            signalSources.append(source)
         }
-        source.resume()
-        termSource = source
     }
 
     /// Close every forward we own before the process goes away, whether the
