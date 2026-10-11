@@ -81,6 +81,8 @@ final class AppModel {
 
     /// Which machine the Connection Logs page should open on.
     var logSelection: String?
+    /// Debug only: a row that should open its port editor when it appears.
+    var debugEditPort: ForwardSpec?
 
     // MARK: Row menu actions
 

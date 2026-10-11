@@ -71,6 +71,9 @@ struct ForwardRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .contextMenu { menu }
+        .onChange(of: model.debugEditPort, initial: true) { _, wanted in
+            if wanted == forward.spec { model.debugEditPort = nil; begin(.port, with: String(forward.spec.localPort)) }
+        }
     }
 
     /// Ad-hoc forwards are named by their port; show that once, as the name.
