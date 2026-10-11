@@ -259,7 +259,7 @@ public final class ForwardController {
             return try await starting.value
         }
         machineStates[alias] = .connecting
-        appendLog(alias, "— connecting —")
+        appendLog(alias, "connecting")
         let task = Task<SSHMaster, Error> { [runner, socketDirectory] in
             let master = SSHMaster(
                 alias: alias,
@@ -283,11 +283,11 @@ public final class ForwardController {
             let master = try await task.value
             masters[alias] = master
             machineStates[alias] = .connected
-            appendLog(alias, "— connected —")
+            appendLog(alias, "connected")
             return master
         } catch {
             masters[alias] = nil
-            appendLog(alias, "— failed: \((error as? SSHError)?.errorDescription ?? error.localizedDescription) —")
+            appendLog(alias, "failed: \((error as? SSHError)?.errorDescription ?? error.localizedDescription)")
             throw error
         }
     }
@@ -296,7 +296,7 @@ public final class ForwardController {
         // Ignore exits we asked for.
         guard masters[alias] != nil else { return }
         masters[alias] = nil
-        appendLog(alias, "— master exited (\(code)) —")
+        appendLog(alias, "connection exited (\(code))")
         let wanted = forwards(on: alias).filter { $0.desiredOn }
         if wanted.isEmpty {
             machineStates[alias] = .disconnected
@@ -309,9 +309,15 @@ public final class ForwardController {
         onMasterDropped?(alias, output)
     }
 
+    private static let logTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
     private func appendLog(_ alias: String, _ line: String) {
         var lines = logs[alias] ?? []
-        lines.append(line)
+        lines.append(ForwardController.logTime.string(from: Date()) + "  " + line)
         if lines.count > 300 { lines.removeFirst(lines.count - 300) }
         logs[alias] = lines
     }

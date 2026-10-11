@@ -91,8 +91,8 @@ Problems in the file are shown at the top of the popover with an Open button.
 - **Close All** and **Settings…** are at the bottom. Settings is a page
   inside the menu, like Control Center's sub-pages: open at login, the
   give-up notification, a Forwards page where you rename or forget in
-  place, links to the favourites file and SSH config, and per-machine
-  connection logs. The ‹ chevron or ⌘← goes back. Escape or a click outside
+  place, links to the favourites file and SSH config, and Connection Logs,
+  a list of machines where clicking one shows its timestamped ssh lines. The ‹ chevron or ⌘← goes back. Escape or a click outside
   closes the menu; ⌘Q quits.
 
 ## How reconnection works
