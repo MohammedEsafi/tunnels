@@ -468,28 +468,35 @@ public final class ForwardController {
     /// Put a moved pinned forward back on its plain number if that binds;
     /// otherwise carry on with the moved number.
     private func tryPlain(_ forward: Forward) async {
-        let plain = ForwardSpec(machine: forward.spec.machine, localPort: forward.spec.remotePort, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
-        guard let master = try? await ensureMaster(forward.spec.machine),
-              let index = forwards.firstIndex(where: { $0.id == forward.id }) else {
+        let alias = forward.spec.machine
+        let plain = ForwardSpec(machine: alias, localPort: forward.spec.remotePort, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
+        guard let master = try? await ensureMaster(alias) else {
             var plainless = forward
             plainless.movedByApp = false
             await open(plainless)
             return
         }
-        forwards[index].state = .pending
+        update(forward.id) { $0.state = .pending }
         if (try? await master.addForward(plain)) != nil {
-            forwards[index].spec = plain
-            forwards[index].movedByApp = false
-            forwards[index].state = .active
-            appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) back on local \(plain.localPort)")
+            // The row may be gone by now; rows are found by id, never by position.
+            guard forwards.contains(where: { $0.id == forward.id }) else {
+                try? await master.cancelForward(plain)
+                return
+            }
+            update(forward.id) {
+                $0.spec = plain
+                $0.movedByApp = false
+                $0.state = .active
+            }
+            appendLog(alias, "forward \(forward.spec.sshArgument) back on local \(plain.localPort)")
             onForwardMoved?(forward.spec, plain)
-            await probe(alias: forward.spec.machine)
+            await probe(alias: alias)
         } else {
-            var keep = forwards[index]
+            var keep = forward
             keep.movedByApp = false   // so this pass does not loop
-            forwards[index] = keep
+            update(forward.id) { $0.movedByApp = false }
             await open(keep)
-            forwards[index].movedByApp = true
+            update(forward.id) { $0.movedByApp = true }
         }
     }
 
