@@ -104,10 +104,10 @@ struct ForwardRow: View {
         Button("Rename…") { begin(.name, with: forward.name) }
         Button("Change Local Port…") { begin(.port, with: String(forward.spec.localPort)) }
         Divider()
-        if forward.isDiscovered {
-            Button("Not This Port") { model.excludePort(forward) }
-        } else {
-            Button("Close and Forget") { model.removeForward(forward) }
+        // On a discovered port "forget" means "do not forward this one again",
+        // otherwise the next scan would bring it straight back.
+        Button("Close and Forget") {
+            if forward.isDiscovered { model.excludePort(forward) } else { model.removeForward(forward) }
         }
     }
 
