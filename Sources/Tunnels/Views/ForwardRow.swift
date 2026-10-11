@@ -3,8 +3,8 @@ import TunnelsCore
 
 /// circle · name · port column · switch
 /// Clicking the name toggles the forward; clicking the port copies it.
-/// Everything else is in the right-click menu. Rename and Change Local Port
-/// edit in place in the row.
+/// Everything else is in the right-click menu. Rename and Change Ports edit in
+/// place in the row: the port column becomes one field holding `local:remote`.
 struct ForwardRow: View {
     @Environment(AppModel.self) private var model
     let forward: Forward
@@ -39,31 +39,28 @@ struct ForwardRow: View {
             }
 
             if editing == .port {
-                // The switch steps aside so the field and the mapping fit on one
-                // line; the name truncates before these do.
-                HStack(spacing: 5) {
-                    inlineField(placeholder: String(forward.spec.localPort)).frame(width: 66)
-                    Text("→").font(.system(size: 12)).foregroundStyle(.tertiary)
-                    Text(String(forward.spec.remotePort)).font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
-                }
-                .fixedSize()
-                .layoutPriority(1)
+                // One field in the grammar of the top field, local first; the
+                // local part starts selected. The name truncates before it does.
+                inlineField(placeholder: portDraft, selection: NSRange(location: 0, length: String(forward.spec.localPort).count))
+                    .frame(width: 96)
+                    .fixedSize()
+                    .layoutPriority(1)
             } else if !portIsName || forward.spec.localPort != forward.spec.remotePort {
                 PortColumn(spec: forward.spec)
             }
 
-            if editing != .port {
-                Toggle("", isOn: Binding(
-                    get: { forward.desiredOn },
-                    set: { on in
-                        if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: on) }
-                    }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .labelsHidden()
-                .accessibilityLabel("\(forward.name) switch")
-            }
+            Toggle("", isOn: Binding(
+                get: { forward.desiredOn },
+                set: { on in
+                    // Flipping the switch mid-edit applies the edit first.
+                    if editing == .port { commitPorts(on: on); return }
+                    if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: on) }
+                }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .labelsHidden()
+            .accessibilityLabel("\(forward.name) switch")
         }
         .padding(.horizontal, 10)
         .frame(height: 32)
@@ -72,12 +69,15 @@ struct ForwardRow: View {
         .onHover { hovering = $0 }
         .contextMenu { menu }
         .onChange(of: model.debugEditPort, initial: true) { _, wanted in
-            if wanted == forward.spec { model.debugEditPort = nil; begin(.port, with: String(forward.spec.localPort)) }
+            if wanted == forward.spec { model.debugEditPort = nil; begin(.port, with: portDraft) }
         }
     }
 
     /// Ad-hoc forwards are named by their port; show that once, as the name.
     private var portIsName: Bool { forward.name == String(forward.spec.remotePort) }
+
+    /// What the port field starts with: `local:remote`, always both.
+    private var portDraft: String { "\(forward.spec.localPort):\(forward.spec.remotePort)" }
 
     @ViewBuilder
     private var leadingIcon: some View {
@@ -111,7 +111,7 @@ struct ForwardRow: View {
         Divider()
         // On a discovered port, renaming or moving it pins it as a side effect.
         Button("Rename…") { begin(.name, with: forward.name) }
-        Button("Change Local Port…") { begin(.port, with: String(forward.spec.localPort)) }
+        Button("Change Ports…") { begin(.port, with: portDraft) }
         Divider()
         // On a discovered port "forget" means "do not forward this one again",
         // otherwise the next scan would bring it straight back.
@@ -127,8 +127,8 @@ struct ForwardRow: View {
         editing = what
     }
 
-    private func inlineField(placeholder: String) -> some View {
-        InlineTextField(text: $draft, placeholder: placeholder, onCommit: commit, onCancel: { editing = nil })
+    private func inlineField(placeholder: String, selection: NSRange? = nil) -> some View {
+        InlineTextField(text: $draft, placeholder: placeholder, onCommit: commit, onCancel: { editing = nil }, selection: selection)
             .frame(height: 22)
             .padding(.horizontal, 5)
             .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(0.25)))
@@ -143,7 +143,22 @@ struct ForwardRow: View {
         case .name:
             if !text.isEmpty { model.renameForward(forward, to: text) }
         case .port:
-            if let port = Int(text) { model.changeLocalPort(forward, to: port) }
+            commitPorts(text: text, on: nil)
+        }
+    }
+
+    /// `17777:7777` sets both ports; a lone `8080` means the same on both ends.
+    private func commitPorts(text: String? = nil, on: Bool?) {
+        editing = nil
+        let text = text ?? draft.trimmingCharacters(in: .whitespaces)
+        let parts = text.split(separator: ":", omittingEmptySubsequences: false).map { Int($0.trimmingCharacters(in: .whitespaces)) }
+        var ports: (local: Int, remote: Int)?
+        if parts.count == 1, let both = parts[0] { ports = (both, both) }
+        if parts.count == 2, let local = parts[0], let remote = parts[1] { ports = (local, remote) }
+        if let ports {
+            model.changePorts(forward, local: ports.local, remote: ports.remote, on: on)
+        } else if let on {
+            model.setForward(forward, on: on)
         }
     }
 

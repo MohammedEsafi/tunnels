@@ -99,29 +99,35 @@ final class AppModel {
         rename(favourite, to: name)
     }
 
-    /// Move a pinned forward to another local port: rewrite the file, then
-    /// reopen it on the new number if it was on.
-    func changeLocalPort(_ forward: Forward, to port: Int) {
-        guard port != forward.spec.localPort, (1...65535).contains(port) else { return }
-        let wasOn = forward.desiredOn
+    /// Move a forward to other ports: rewrite the file, then reopen it on the
+    /// new numbers if it was on (or as `on` says). A discovered port keeps its
+    /// remote number, since that is what was found on the machine.
+    func changePorts(_ forward: Forward, local: Int, remote: Int, on: Bool? = nil) {
+        let remote = forward.isDiscovered ? forward.spec.remotePort : remote
+        let moved = ForwardSpec(machine: forward.spec.machine, localPort: local, remoteHost: forward.spec.remoteHost, remotePort: remote)
+        guard (1...65535).contains(local), (1...65535).contains(remote) else { return }
+        guard moved != forward.spec else {
+            if let on, on != forward.desiredOn { setForward(forward, on: on) }
+            return
+        }
+        let wantOn = on ?? forward.desiredOn
         Task {
             if forward.isDiscovered {
                 // Pin it on the new number; discovery then leaves this remote port alone.
                 await controller.excludePort(forward.spec.remotePort, on: forward.spec.machine)
                 try? Favourites.setExcluded(controller.autoExcluded[forward.spec.machine] ?? [], forHost: forward.spec.machine, in: favouritesURL)
-                let moved = ForwardSpec(machine: forward.spec.machine, localPort: port, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
                 try? Favourites.add(Favourite(name: forward.name, spec: moved), to: favouritesURL)
                 reloadFavourites()
-                if let pinned = controller.forwards.first(where: { $0.spec == moved }) {
+                if wantOn, let pinned = controller.forwards.first(where: { $0.spec == moved }) {
                     await controller.setForward(id: pinned.id, on: true)
                 }
                 return
             }
             await controller.remove(id: forward.id)
-            try? Favourites.changeLocalPort(forward.spec, to: port, in: favouritesURL)
+            try? Favourites.changePorts(forward.spec, local: local, remote: remote, in: favouritesURL)
             reloadFavourites()
-            if wasOn, let moved = controller.forwards.first(where: { $0.spec.machine == forward.spec.machine && $0.spec.localPort == port }) {
-                await controller.setForward(id: moved.id, on: true)
+            if wantOn, let pinned = controller.forwards.first(where: { $0.spec == moved }) {
+                await controller.setForward(id: pinned.id, on: true)
             }
         }
     }

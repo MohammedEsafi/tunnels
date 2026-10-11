@@ -230,6 +230,27 @@ final class FavouritesTests: XCTestCase {
         XCTAssertEqual(back.spec, ForwardSpec(machine: "box-b", localPort: 8080))
     }
 
+    func testChangePortsWritesRemoteOnlyWhenDifferent() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent("favourites.toml")
+        try """
+        [[favourite]]
+        name = "web"
+        host = "box-b"
+        port = 8080
+        """.write(to: url, atomically: true, encoding: .utf8)
+
+        // Both ports change; remote_port appears.
+        XCTAssertTrue(try Favourites.changePorts(ForwardSpec(machine: "box-b", localPort: 8080), local: 18080, remote: 8081, in: url))
+        XCTAssertEqual(try Favourites.load(from: url)[0].spec, ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8081))
+        // Back to equal ports; remote_port goes away again.
+        XCTAssertTrue(try Favourites.changePorts(ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8081), local: 9090, remote: 9090, in: url))
+        XCTAssertEqual(try Favourites.load(from: url)[0].spec, ForwardSpec(machine: "box-b", localPort: 9090))
+        XCTAssertFalse(try String(contentsOf: url, encoding: .utf8).contains("remote_port"))
+    }
+
     func testAddCreatesFileWithTemplate() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fav-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
