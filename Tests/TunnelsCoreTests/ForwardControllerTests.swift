@@ -225,7 +225,7 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(controller.forwards(on: "gpu-box").map(\.spec.localPort), [8080])
         XCTAssertEqual(runner.calls(containing: "cancel").count, 1)
 
-        await controller.excludePort(8080, on: "gpu-box")
+        await controller.excludePort(remotePort: 8080, on: "gpu-box")
         XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
         await controller.scan("gpu-box")
         XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
@@ -234,7 +234,7 @@ final class ForwardControllerTests: XCTestCase {
         listeners = "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:4000 0.0.0.0:*"
         await controller.scan("gpu-box")
         XCTAssertEqual(controller.lastDiscovered["gpu-box"], [3000, 4000])
-        await controller.excludePort(4000, on: "gpu-box")
+        await controller.excludePort(remotePort: 4000, on: "gpu-box")
         XCTAssertEqual(controller.lastDiscovered["gpu-box"], [3000])
 
         await controller.disableAutoHost("gpu-box")
@@ -379,8 +379,8 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(controller.forwards(on: "box-b").map(\.spec.localPort), [7777, 8080])
 
         // × on each discovered row
-        await controller.excludePort(7777, on: "box-b")
-        await controller.excludePort(8080, on: "box-b")
+        await controller.excludePort(remotePort: 7777, on: "box-b")
+        await controller.excludePort(remotePort: 8080, on: "box-b")
         XCTAssertEqual(controller.forwards(on: "box-b"), [])
         XCTAssertEqual(controller.autoExcluded["box-b"], [7777, 8080])
 

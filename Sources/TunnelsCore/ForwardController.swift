@@ -162,8 +162,10 @@ public final class ForwardController {
         }
     }
 
-    /// "Not this one": drop a discovered port (by its remote number) and keep it dropped.
-    public func excludePort(_ port: Int, on alias: String) async {
+    /// "Not this one": drop a discovered port and keep it dropped. Exclusions
+    /// are keyed by the remote port, which is what discovery reports; the local
+    /// number may carry an offset.
+    public func excludePort(remotePort port: Int, on alias: String) async {
         autoExcluded[alias, default: []].insert(port)
         lastDiscovered[alias]?.remove(port)
         for forward in forwards(on: alias) where forward.isDiscovered && forward.spec.remotePort == port {
