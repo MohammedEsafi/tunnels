@@ -27,11 +27,15 @@ final class Gate: @unchecked Sendable {
     private let lock = NSLock()
     private var opened = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
-    private(set) var arrivals = 0
+    private var arrivalCount = 0
+    var arrivals: Int {
+        lock.lock(); defer { lock.unlock() }
+        return arrivalCount
+    }
 
     func wait() async {
         lock.lock()
-        arrivals += 1
+        arrivalCount += 1
         if opened { lock.unlock(); return }
         await withCheckedContinuation { continuation in
             waiters.append(continuation)

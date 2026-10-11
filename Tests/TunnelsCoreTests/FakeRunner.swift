@@ -12,6 +12,8 @@ final class FakeRunner: ProcessRunning, @unchecked Sendable {
 
     private let lock = NSLock()
     private(set) var calls: [Call] = []
+    /// Calls whose result has been handed back, in order; a gated call joins once released.
+    private var finished: [Call] = []
     private(set) var launches: [FakeHandle] = []
 
     /// Decide the result of a `run` call; return nil to fall back to the
@@ -27,8 +29,10 @@ final class FakeRunner: ProcessRunning, @unchecked Sendable {
     var masterExitsImmediately: (code: Int32, output: String)?
 
     func run(_ executable: String, arguments: [String], timeout: TimeInterval) async throws -> ProcessResult {
-        let (script, gate, running, connects) = record(Call(executable: executable, arguments: arguments))
+        let call = Call(executable: executable, arguments: arguments)
+        let (script, gate, running, connects) = record(call)
         if let gate { await gate(arguments) }
+        defer { lock.lock(); finished.append(call); lock.unlock() }
         if let script, let result = script(arguments) { return result }
         if arguments.contains("check") {
             return ProcessResult(exitCode: running && connects ? 0 : 255, stderr: running ? "" : "No ControlPath specified")
@@ -37,6 +41,12 @@ final class FakeRunner: ProcessRunning, @unchecked Sendable {
             runningMasters.first { $0.socketPath == socket }?.simulateExit(code: 0)
         }
         return ProcessResult(exitCode: 0)
+    }
+
+    /// Calls containing `fragment` that have returned to the caller.
+    func completed(containing fragment: String) -> [Call] {
+        lock.lock(); defer { lock.unlock() }
+        return finished.filter { $0.arguments.contains(fragment) }
     }
 
     private func record(_ call: Call) -> ((([String]) -> ProcessResult?)?, (([String]) async -> Void)?, Bool, Bool) {

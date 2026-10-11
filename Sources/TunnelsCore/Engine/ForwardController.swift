@@ -299,12 +299,12 @@ public final class ForwardController {
         guard forwards.first(where: { $0.id == forward.id })?.desiredOn == true else { return }
         do {
             try await master.addForward(forward.spec)
-            update(forward.id) { $0.state = .active }
             // Switched off while ssh was adding it: take it straight down again.
             guard let added = forwards.first(where: { $0.id == forward.id }), added.desiredOn else {
                 await close(forward.withState(.active))
                 return
             }
+            update(forward.id) { $0.state = .active }
             appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) open")
             if !forward.isDiscovered { await probe(alias: forward.spec.machine) }
         } catch {
@@ -359,8 +359,9 @@ public final class ForwardController {
             )
             try await master.start()
             // Everything that wanted this connection may have been switched
-            // off while it was starting; do not keep an idle master around.
-            guard self.isWanted(alias) else {
+            // off while it was starting, or the app may be shutting down; do
+            // not keep an idle master around.
+            guard self.isWanted(alias), !Task.isCancelled else {
                 await master.stop()
                 throw CancellationError()
             }
