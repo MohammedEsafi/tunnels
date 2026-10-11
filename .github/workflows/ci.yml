@@ -27,12 +27,9 @@ jobs:
         run: swift test
 
       - name: Format
-        # Marked advisory until one green run confirms the runner's swift-format agrees with the pinned style.
-        continue-on-error: true
         run: xcrun swift-format lint --strict --recursive Sources Tests
 
       - name: Shell scripts
-        continue-on-error: true
         run: shellcheck scripts/*.sh testenv/*.sh
 
       - name: Bundle
