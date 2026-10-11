@@ -74,13 +74,17 @@ extension ForwardController {
             return
         }
         let excluded = autoExcluded[alias] ?? []
-        let pinnedRemote = Set(forwards(on: alias).filter {
-            !$0.isDiscovered && $0.spec.isLoopbackRemote
-        }.map(\.spec.remotePort))
+        let pinnedRemote = Set(
+            forwards(on: alias).filter {
+                !$0.isDiscovered && $0.spec.isLoopbackRemote
+            }.map(\.spec.remotePort))
         let wanted = PortDiscovery.parse(output).subtracting(excluded).subtracting(pinnedRemote)
         lastDiscovered[alias] = wanted
         let current = forwards(on: alias).filter(\.isDiscovered)
-        appendLog(alias, "scan: listening \(PortDiscovery.parse(output).sorted()) excluded \(excluded.sorted()) have \(current.map(\.spec.remotePort).sorted())")
+        appendLog(
+            alias,
+            "scan: listening \(PortDiscovery.parse(output).sorted()) excluded \(excluded.sorted()) have \(current.map(\.spec.remotePort).sorted())"
+        )
 
         for forward in current where !wanted.contains(forward.spec.remotePort) {
             await close(forward)
@@ -112,12 +116,15 @@ extension ForwardController {
     /// on which machine connected first.
     func openDiscovered(_ port: Int, on alias: String) async {
         if offsets[alias] == nil {
-            let plain = Forward(spec: ForwardSpec(machine: alias, localPort: port), name: String(port), isFavourite: false, isDiscovered: true, desiredOn: true)
+            let plain = Forward(
+                spec: ForwardSpec(machine: alias, localPort: port), name: String(port), isFavourite: false, isDiscovered: true,
+                desiredOn: true)
             if !isLocalPortTaken(port) {
                 forwards.append(plain)
                 await open(plain)
                 guard case .error(let reason) = forwards.first(where: { $0.id == plain.id })?.state,
-                      reason == "Local port in use" else { return }
+                    reason == "Local port in use"
+                else { return }
                 forwards.removeAll { $0.id == plain.id }
             }
             let offset = nextOffset()
@@ -135,7 +142,9 @@ extension ForwardController {
     }
 
     func openMoved(_ port: Int, on alias: String, offset: Int) async {
-        let moved = Forward(spec: ForwardSpec(machine: alias, localPort: port + offset, remotePort: port), name: String(port), isFavourite: false, isDiscovered: true, desiredOn: true)
+        let moved = Forward(
+            spec: ForwardSpec(machine: alias, localPort: port + offset, remotePort: port), name: String(port), isFavourite: false,
+            isDiscovered: true, desiredOn: true)
         forwards.append(moved)
         await open(moved)
     }
@@ -161,7 +170,8 @@ extension ForwardController {
     /// otherwise carry on with the moved number.
     func tryPlain(_ forward: Forward) async {
         let alias = forward.spec.machine
-        let plain = ForwardSpec(machine: alias, localPort: forward.spec.remotePort, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
+        let plain = ForwardSpec(
+            machine: alias, localPort: forward.spec.remotePort, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
         guard let master = try? await ensureMaster(alias) else {
             var plainless = forward
             plainless.movedByApp = false
@@ -185,7 +195,7 @@ extension ForwardController {
             await probe(alias: alias)
         } else {
             var keep = forward
-            keep.movedByApp = false   // so this pass does not loop
+            keep.movedByApp = false  // so this pass does not loop
             update(forward.id) { $0.movedByApp = false }
             await open(keep)
             update(forward.id) { $0.movedByApp = true }
@@ -205,9 +215,12 @@ extension ForwardController {
             appendLog(alias, "local ports taken: using +\(offset) for this machine")
             onOffsetAssigned?(alias, offset)
         }
-        let moved = ForwardSpec(machine: alias, localPort: forward.spec.remotePort + offset, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
+        let moved = ForwardSpec(
+            machine: alias, localPort: forward.spec.remotePort + offset, remoteHost: forward.spec.remoteHost,
+            remotePort: forward.spec.remotePort)
         guard !forwards.contains(where: { $0.spec == moved }),
-              let index = forwards.firstIndex(where: { $0.id == forward.id }) else { return }
+            let index = forwards.firstIndex(where: { $0.id == forward.id })
+        else { return }
         forwards[index].spec = moved
         forwards[index].movedByApp = true
         forwards[index].state = .pending

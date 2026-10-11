@@ -1,21 +1,22 @@
 import XCTest
+
 @testable import TunnelsCore
 
 final class SSHConfigTests: XCTestCase {
     func testHostAliasesSkipPatternsAndNegations() {
         let text = """
-        # comment
-        Host prod-db-01 prod-db-02
-          HostName 10.0.0.5
-          User deploy
+            # comment
+            Host prod-db-01 prod-db-02
+              HostName 10.0.0.5
+              User deploy
 
-        Host *.internal
-          ProxyJump bastion
+            Host *.internal
+              ProxyJump bastion
 
-        Host !nope staging
-        host=dev-box
-        Match host something
-        """
+            Host !nope staging
+            host=dev-box
+            Match host something
+            """
         var aliases: [String] = []
         SSHConfig.parse(text, baseDirectory: "/tmp", into: &aliases, depth: 0)
         XCTAssertEqual(aliases, ["prod-db-01", "prod-db-02", "staging", "dev-box"])

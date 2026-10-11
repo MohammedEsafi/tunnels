@@ -1,4 +1,5 @@
 import Foundation
+
 @testable import TunnelsCore
 
 /// Scripted stand-in for ssh. Records every call and lets tests decide the

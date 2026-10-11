@@ -5,7 +5,8 @@ public enum PortDiscovery {
     /// `ss` on modern Linux, `netstat` where it exists, and the kernel's own
     /// /proc/net/tcp tables when neither tool is installed (containers).
     /// macOS remotes answer through `netstat -an`.
-    public static let command = "ss -ltnH 2>/dev/null || netstat -tln 2>/dev/null || cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || netstat -an 2>/dev/null"
+    public static let command =
+        "ss -ltnH 2>/dev/null || netstat -tln 2>/dev/null || cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || netstat -an 2>/dev/null"
 
     /// Ports a service would be deliberately started on: 1024 up to the start
     /// of Linux's ephemeral range (32768), minus sshd's own. Loopback and
@@ -32,12 +33,17 @@ public enum PortDiscovery {
             guard line.lowercased().contains("listen") else { continue }
             for token in line.split(whereSeparator: { $0 == " " || $0 == "\t" }) {
                 guard let colon = token.lastIndex(where: { $0 == ":" || $0 == "." }),
-                      let port = Int(token[token.index(after: colon)...]) else { continue }
+                    let port = Int(token[token.index(after: colon)...])
+                else { continue }
                 let host = token[..<colon]
                 guard !host.isEmpty else { continue }
-                guard host.allSatisfy({ $0.isNumber || $0 == "." || $0 == ":" || $0 == "[" || $0 == "]" || $0 == "*" || $0 == "%" || $0.isLetter }) else { continue }
+                guard
+                    host.allSatisfy({
+                        $0.isNumber || $0 == "." || $0 == ":" || $0 == "[" || $0 == "]" || $0 == "*" || $0 == "%" || $0.isLetter
+                    })
+                else { continue }
                 ports.insert(port)
-                break // first address-like token on the line is the local one
+                break  // first address-like token on the line is the local one
             }
         }
         return ports
@@ -52,7 +58,8 @@ public enum PortDiscovery {
         guard fields.count >= 4, fields[0].hasSuffix(":"), fields[3] == "0A" else { return nil }
         let local = fields[1].split(separator: ":")
         guard local.count == 2, local[0].count == 8 || local[0].count == 32, local[1].count == 4,
-              let port = Int(local[1], radix: 16) else { return nil }
+            let port = Int(local[1], radix: 16)
+        else { return nil }
         return port
     }
 }

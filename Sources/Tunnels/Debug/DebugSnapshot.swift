@@ -31,18 +31,25 @@ enum DebugSnapshot {
                     switch fields.first {
                     case "exclude":
                         if fields.count == 3, let port = Int(fields[2]),
-                           let forward = model.controller.forwards.first(where: { $0.spec.machine == fields[1] && $0.spec.remotePort == port }) {
+                            let forward = model.controller.forwards.first(where: {
+                                $0.spec.machine == fields[1] && $0.spec.remotePort == port
+                            })
+                        {
                             model.excludePort(forward)
-                        } else { DebugLog.log("script: no such forward") }
+                        } else {
+                            DebugLog.log("script: no such forward")
+                        }
                     case "off": model.setMachine(fields[1], on: false)
                     case "on": model.setMachine(fields[1], on: true)
                     case "all": model.enableAllPorts(fields[1])
                     case "closeall": model.closeAll()
                     case "escape":
                         // Through the event queue, so the panel's key monitor sees it like a real key press.
-                        if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                                                        windowNumber: statusItem.panel?.windowNumber ?? 0, context: nil, characters: "\u{1B}",
-                                                        charactersIgnoringModifiers: "\u{1B}", isARepeat: false, keyCode: 53) {
+                        if let event = NSEvent.keyEvent(
+                            with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                            windowNumber: statusItem.panel?.windowNumber ?? 0, context: nil, characters: "\u{1B}",
+                            charactersIgnoringModifiers: "\u{1B}", isARepeat: false, keyCode: 53)
+                        {
                             NSApp.postEvent(event, atStart: false)
                         }
                     default: break
@@ -51,7 +58,9 @@ enum DebugSnapshot {
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            DebugLog.log("snapshot: forwards=\(model.controller.forwards.map { "\($0.spec.machine):\($0.spec.localPort) \($0.state) disc=\($0.isDiscovered)" }) machines=\(model.controller.machines) auto=\(model.controller.autoHosts) excluded=\(model.controller.autoExcluded) states=\(model.controller.machineStates)")
+            DebugLog.log(
+                "snapshot: forwards=\(model.controller.forwards.map { "\($0.spec.machine):\($0.spec.localPort) \($0.state) disc=\($0.isDiscovered)" }) machines=\(model.controller.machines) auto=\(model.controller.autoHosts) excluded=\(model.controller.autoExcluded) states=\(model.controller.machineStates)"
+            )
             for (alias, lines) in model.controller.logs { DebugLog.log("log \(alias):\n  " + lines.joined(separator: "\n  ")) }
             let screen = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             if let edit = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_EDITPORT"], let spec = QuickOpen.parse(edit) {

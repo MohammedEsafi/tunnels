@@ -3,7 +3,9 @@ import XCTest
 
 /// Poll until `condition` holds; fail the test if it never does.
 @MainActor
-func waitUntil(timeout: TimeInterval = 5, file: StaticString = #filePath, line: UInt = #line, _ condition: @escaping @MainActor () -> Bool) async {
+func waitUntil(timeout: TimeInterval = 5, file: StaticString = #filePath, line: UInt = #line, _ condition: @escaping @MainActor () -> Bool)
+    async
+{
     let deadline = Date().addingTimeInterval(timeout)
     while Date() < deadline {
         if condition() { return }

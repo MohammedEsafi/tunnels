@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import TunnelsCore
 
 final class ModelsTests: XCTestCase {

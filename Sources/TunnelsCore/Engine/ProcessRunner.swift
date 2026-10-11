@@ -71,11 +71,12 @@ public final class SystemProcessRunner: ProcessRunning {
                 err.fileHandleForReading.readabilityHandler = nil
                 outData.append(out.fileHandleForReading.readDataToEndOfFile())
                 errData.append(err.fileHandleForReading.readDataToEndOfFile())
-                continuation.resume(returning: ProcessResult(
-                    exitCode: timedOut.isSet ? ProcessResult.timedOutExitCode : proc.terminationStatus,
-                    stdout: outData.string,
-                    stderr: errData.string
-                ))
+                continuation.resume(
+                    returning: ProcessResult(
+                        exitCode: timedOut.isSet ? ProcessResult.timedOutExitCode : proc.terminationStatus,
+                        stdout: outData.string,
+                        stderr: errData.string
+                    ))
             }
 
             do {

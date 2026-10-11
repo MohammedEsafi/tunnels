@@ -71,7 +71,8 @@ public enum QuickOpen {
             }
             // Exactly one host named: offer every port on it, right under it.
             if let exact = matchingHosts.first(where: { $0.name.lowercased() == needle }) {
-                result.insert(.allPorts(exact.name), at: min(result.firstIndex(of: .host(exact)).map { $0 + 1 } ?? result.count, result.count))
+                result.insert(
+                    .allPorts(exact.name), at: min(result.firstIndex(of: .host(exact)).map { $0 + 1 } ?? result.count, result.count))
             } else if matchingHosts.isEmpty, isHost(text), !favourites.contains(where: { $0.name.lowercased().contains(needle) }) {
                 // A name we do not know, typed in full: ssh may still resolve it.
                 result.append(.allPorts(text))

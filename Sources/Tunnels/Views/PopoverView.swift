@@ -56,11 +56,12 @@ struct PopoverView: View {
                         MachineSection(alias: alias)
                     }
                 }
-                .background(GeometryReader { proxy in
-                    Color.clear
-                        .onAppear { listHeight = proxy.size.height }
-                        .onChange(of: proxy.size.height) { _, next in listHeight = next }
-                })
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear { listHeight = proxy.size.height }
+                            .onChange(of: proxy.size.height) { _, next in listHeight = next }
+                    })
             }
             .frame(height: min(listHeight, model.maxListHeight))
 
@@ -80,20 +81,20 @@ struct PopoverView: View {
             Text("Tunnels").font(.system(size: 13, weight: .bold))
             Spacer()
             if !model.sectionAliases.isEmpty {
-            Button {
-                model.quickOpenVisible.toggle()
-            } label: {
-                Image(systemName: model.quickOpenVisible ? "xmark" : "plus")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(model.quickOpenVisible ? .white : .primary)
-                    .frame(width: 22, height: 22)
-                    .background(Circle().fill(model.quickOpenVisible ? Color.accentColor : Color.primary.opacity(0.12)))
-            }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .help(model.quickOpenVisible ? "Hide" : "Open a forward")
-            .accessibilityLabel(model.quickOpenVisible ? "Hide the open field" : "Open a forward")
-            .keyboardShortcut("n")
+                Button {
+                    model.quickOpenVisible.toggle()
+                } label: {
+                    Image(systemName: model.quickOpenVisible ? "xmark" : "plus")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(model.quickOpenVisible ? .white : .primary)
+                        .frame(width: 22, height: 22)
+                        .background(Circle().fill(model.quickOpenVisible ? Color.accentColor : Color.primary.opacity(0.12)))
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help(model.quickOpenVisible ? "Hide" : "Open a forward")
+                .accessibilityLabel(model.quickOpenVisible ? "Hide the open field" : "Open a forward")
+                .keyboardShortcut("n")
             }
         }
         .padding(.horizontal, 10)

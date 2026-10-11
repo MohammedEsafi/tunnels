@@ -19,7 +19,8 @@ enum TunnelsMain {
     /// ssh masters. A sandboxed copy with its own socket directory is allowed.
     private static func exitIfAlreadyRunning() {
         guard let identifier = Bundle.main.bundleIdentifier,
-              ProcessInfo.processInfo.environment["TUNNELS_SOCKET_DIR"] == nil else { return }
+            ProcessInfo.processInfo.environment["TUNNELS_SOCKET_DIR"] == nil
+        else { return }
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: identifier)
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
         guard !others.isEmpty else { return }

@@ -34,8 +34,12 @@ struct QuickOpenField: View {
                     .font(.system(size: 13))
                     .focused($focused)
                     .onSubmit(submit)
-                    .onKeyPress(.downArrow) { move(1); return .handled }
-                    .onKeyPress(.upArrow) { move(-1); return .handled }
+                    .onKeyPress(.downArrow) {
+                        move(1); return .handled
+                    }
+                    .onKeyPress(.upArrow) {
+                        move(-1); return .handled
+                    }
                     .onChange(of: model.quickOpenText) { _, next in
                         highlighted = next.trimmingCharacters(in: .whitespaces).isEmpty ? -1 : 0
                         if next.hasSuffix(":") { focused = true }

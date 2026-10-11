@@ -78,7 +78,7 @@ public final class ForwardController {
                 var kept = existing
                 kept.name = item.name
                 kept.isFavourite = true
-                kept.isDiscovered = false   // pinned now; discovery leaves it alone
+                kept.isDiscovered = false  // pinned now; discovery leaves it alone
                 kept.movedByApp = item.movedByApp
                 next.append(kept)
             } else {
@@ -216,7 +216,7 @@ public final class ForwardController {
         }
         guard !candidates.isEmpty, let output = try? await master.run(PortDiscovery.command) else { return }
         let listening = PortDiscovery.listeners(output)
-        guard !listening.isEmpty else { return } // no tool answered; say nothing
+        guard !listening.isEmpty else { return }  // no tool answered; say nothing
         for forward in candidates {
             let has = listening.contains(forward.spec.remotePort)
             update(forward.id) { $0.state = has ? .active : .noService }
@@ -283,7 +283,8 @@ public final class ForwardController {
         // A forward the app moved earlier: on a manual switch-on, see whether
         // its own number is free again before using the moved one.
         if forward.movedByApp, !forward.isDiscovered, tryPlainOnce.contains(forward.spec.machine),
-           forward.spec.localPort != forward.spec.remotePort, !isLocalPortTaken(forward.spec.remotePort) {
+            forward.spec.localPort != forward.spec.remotePort, !isLocalPortTaken(forward.spec.remotePort)
+        {
             await tryPlain(forward)
             return
         }

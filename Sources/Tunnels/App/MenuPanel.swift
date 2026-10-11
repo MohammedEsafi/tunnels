@@ -20,7 +20,8 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
 
     init<Content: View>(rootView: Content, onClose: @escaping () -> Void) {
         self.onClose = onClose
-        let sized = rootView
+        let sized =
+            rootView
             .frame(width: MenuPanel.width)
             .background(SizeReporter())
         hostingView = NSHostingView(rootView: AnyView(sized))
@@ -120,10 +121,11 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
             Task { @MainActor in self.close() }
         }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            guard let self, event.keyCode == 53 else { return event } // Escape
+            guard let self, event.keyCode == 53 else { return event }  // Escape
             // An inline editor owns Escape while it is active: it cancels the edit.
             if let editor = self.firstResponder as? NSTextView, editor.isFieldEditor,
-               (editor.delegate as? NSTextField)?.delegate is InlineTextField.Coordinator {
+                (editor.delegate as? NSTextField)?.delegate is InlineTextField.Coordinator
+            {
                 return event
             }
             Task { @MainActor in self.close() }

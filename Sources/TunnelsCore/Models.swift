@@ -69,7 +69,10 @@ public struct Forward: Identifiable, Hashable, Sendable {
     public var desiredOn: Bool
     public var state: ForwardState
 
-    public init(spec: ForwardSpec, name: String, isFavourite: Bool, isDiscovered: Bool = false, movedByApp: Bool = false, desiredOn: Bool = false, state: ForwardState = .off) {
+    public init(
+        spec: ForwardSpec, name: String, isFavourite: Bool, isDiscovered: Bool = false, movedByApp: Bool = false, desiredOn: Bool = false,
+        state: ForwardState = .off
+    ) {
         self.spec = spec
         self.name = name
         self.isFavourite = isFavourite
