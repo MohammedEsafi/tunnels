@@ -62,7 +62,7 @@ struct PopoverView: View {
                         .onChange(of: proxy.size.height) { _, next in listHeight = next }
                 })
             }
-            .frame(height: min(listHeight, 620))
+            .frame(height: min(listHeight, model.maxListHeight))
 
             MenuSeparator()
             MenuRow("Close All", enabled: model.anyDesired) { model.closeAll() }

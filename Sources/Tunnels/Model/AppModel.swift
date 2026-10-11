@@ -45,6 +45,9 @@ final class AppModel {
     /// Settings live on pages inside the menu, like Control Center sub-pages.
     enum MenuPage { case main, settings, logs }
     var menuPage: MenuPage = .main
+    /// How tall the scrolling list may grow: set from the screen the panel
+    /// opens on, so the menu never runs off the bottom of a small display.
+    var maxListHeight: CGFloat = 620
 
     /// Whether to post notifications: a machine giving up, coming back, or
     /// getting an offset.
