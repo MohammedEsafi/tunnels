@@ -21,7 +21,7 @@ services:
   # Only reachable from inside the lab network: forward to it *through* a box
   # with remote_host = redis, e.g. box-a:16379:redis:6379
   redis:
-    image: redis:7-alpine
+    image: redis:7.2-alpine
     networks: [lab]
 
 networks:
