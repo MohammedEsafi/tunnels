@@ -83,6 +83,8 @@ struct SettingsPage: View {
     @Environment(AppModel.self) private var model
     @State private var launchAtLogin = false
     @State private var loginError: String?
+    @State private var loginNeedsApproval = false
+    @State private var notificationsDenied = false
 
     var body: some View {
         @Bindable var model = model
@@ -100,11 +102,18 @@ struct SettingsPage: View {
                         loginError = error.localizedDescription
                         launchAtLogin = model.launchAtLogin
                     }
+                    loginNeedsApproval = model.launchAtLoginNeedsApproval
                 }
             if let loginError {
-                Text(loginError).font(.system(size: 11)).foregroundStyle(.red).padding(.horizontal, 10)
+                Hint(loginError, warning: true)
+            } else if loginNeedsApproval {
+                Hint("Allow Tunnels under System Settings › General › Login Items.")
             }
             ToggleRow(title: "Notify about dropped connections", isOn: $model.notifyOnGiveUp)
+                .onChange(of: model.notifyOnGiveUp) { _, _ in Task { notificationsDenied = await Notifier.isDenied() } }
+            if model.notifyOnGiveUp && notificationsDenied {
+                Hint("Notifications for Tunnels are off in System Settings.")
+            }
 
             MenuSeparator()
             LinkRow(title: "Favourites File", external: true) { model.openFavouritesFile() }
@@ -119,8 +128,31 @@ struct SettingsPage: View {
             .padding(.horizontal, 10)
             .frame(height: 24)
         }
-        .onAppear { launchAtLogin = model.launchAtLogin }
+        .onAppear {
+            launchAtLogin = model.launchAtLogin
+            loginNeedsApproval = model.launchAtLoginNeedsApproval
+        }
+        .task { notificationsDenied = await Notifier.isDenied() }
         .transition(pageTransition)
+    }
+}
+
+/// One quiet line under a setting that needs the user's attention elsewhere.
+private struct Hint: View {
+    let text: String
+    var warning = false
+
+    init(_ text: String, warning: Bool = false) {
+        self.text = text
+        self.warning = warning
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11))
+            .foregroundStyle(warning ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+            .padding(.horizontal, 10)
+            .padding(.bottom, 4)
     }
 }
 

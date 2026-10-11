@@ -52,7 +52,11 @@ final class AppModel {
     /// Whether to post notifications: a machine giving up, coming back, or
     /// getting an offset.
     var notifyOnGiveUp: Bool = UserDefaults.standard.object(forKey: "notifyOnGiveUp") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(notifyOnGiveUp, forKey: "notifyOnGiveUp") }
+        didSet {
+            UserDefaults.standard.set(notifyOnGiveUp, forKey: "notifyOnGiveUp")
+            // Ask while the user is looking at the switch, not when a machine drops.
+            if notifyOnGiveUp { Notifier.requestAuthorization() }
+        }
     }
 
     var appVersion: String {
