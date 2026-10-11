@@ -28,6 +28,47 @@ final class ReconnectorTests: XCTestCase {
         XCTAssertEqual(controller.forwards[0].state, .active)
     }
 
+    func testReportsBackAfterANoticeableDrop() async {
+        reconnector.noticeAfter = 0
+        var back: (String, TimeInterval)?
+        reconnector.onReconnected = { back = ($0, $1) }
+
+        runner.runningMasters.first?.simulateExit(code: 255)
+        await waitUntil { back != nil }
+
+        XCTAssertEqual(back?.0, "prod-db-01")
+        XCTAssertEqual(controller.machineState("prod-db-01"), .connected)
+    }
+
+    func testShortDropIsNotReported() async {
+        reconnector.noticeAfter = 60
+        var reported = false
+        reconnector.onReconnected = { _, _ in reported = true }
+
+        runner.runningMasters.first?.simulateExit(code: 255)
+        await waitUntil { self.controller.machineState("prod-db-01") == .connected && self.runner.launches.count == 2 }
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertFalse(reported)
+    }
+
+    func testUserRetryIsNotReported() async {
+        reconnector.noticeAfter = 0
+        reconnector.budget = 1
+        var reported = false
+        reconnector.onReconnected = { _, _ in reported = true }
+        runner.masterExitsImmediately = (255, "Connection refused")
+        runner.runningMasters.first?.simulateExit(code: 255)
+        await waitUntil { if case .failed = self.controller.machineState("prod-db-01") { return true } else { return false } }
+
+        runner.masterExitsImmediately = nil
+        reconnector.retryNow("prod-db-01", userInitiated: true)
+        await waitUntil { self.controller.machineState("prod-db-01") == .connected }
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertFalse(reported)
+    }
+
     func testGivesUpAfterBudget() async {
         reconnector.budget = 3
         var gaveUp: (String, String)?

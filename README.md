@@ -100,9 +100,11 @@ Problems in the file are shown at the top of the popover with an Open button.
 A master is considered dropped when its process exits, when a 30-second health
 check stops answering, or after the Mac wakes or the network path changes. The
 app then retries after 2, 4, 8, 16 and 30 seconds, re-adding every forward that
-was on. After five failures the machine shows "Retry now" and one notification
-is posted. A machine whose very first connection fails (unknown host, no key)
-is not retried automatically: fix the cause and press Retry now.
+was on. After five failures the machine shows the retry circle and one
+notification is posted, "<machine> is down". If it comes back on its own after
+being down for ten seconds or more, a second one says "<machine> is back" with
+how long it was gone. Both are under one switch in Settings. A machine whose very first connection fails (unknown host, no key)
+is not retried automatically: fix the cause and click its orange circle.
 
 Quitting the app closes every forward it owns. Forwards that were on are
 restored at the next launch.
