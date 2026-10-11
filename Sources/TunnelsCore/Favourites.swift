@@ -254,7 +254,7 @@ public extension Favourites {
 
     // MARK: [[host]] blocks
 
-    public static func addHost(_ host: AutoHost, to url: URL = defaultURL) throws {
+    static func addHost(_ host: AutoHost, to url: URL = defaultURL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         var text = (try? String(contentsOf: url, encoding: .utf8)) ?? template
         if !text.isEmpty && !text.hasSuffix("\n") { text += "\n" }
@@ -267,12 +267,12 @@ public extension Favourites {
     }
 
     @discardableResult
-    public static func removeHost(_ name: String, from url: URL = defaultURL) throws -> Bool {
+    static func removeHost(_ name: String, from url: URL = defaultURL) throws -> Bool {
         try editHostBlock(name, in: url) { _ in nil }
     }
 
     @discardableResult
-    public static func setExcluded(_ excluded: Set<Int>, forHost name: String, in url: URL = defaultURL) throws -> Bool {
+    static func setExcluded(_ excluded: Set<Int>, forHost name: String, in url: URL = defaultURL) throws -> Bool {
         try editHostBlock(name, in: url) { lines in
             var kept = lines.filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("exclude") }
             if !excluded.isEmpty {
@@ -286,7 +286,7 @@ public extension Favourites {
     }
 
     @discardableResult
-    public static func setOffset(_ offset: Int?, forHost name: String, in url: URL = defaultURL) throws -> Bool {
+    static func setOffset(_ offset: Int?, forHost name: String, in url: URL = defaultURL) throws -> Bool {
         try editHostBlock(name, in: url) { lines in
             var kept = lines.filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("offset") }
             if let offset {

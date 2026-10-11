@@ -28,8 +28,8 @@ final class StatusItemController {
     private func observe() {
         withObservationTracking {
             render()
-        } onChange: {
-            Task { @MainActor [weak self] in self?.observe() }
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.observe() }
         }
     }
 
