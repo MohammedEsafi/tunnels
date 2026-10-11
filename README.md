@@ -40,20 +40,24 @@ Ports and Close and Forget; right-click a machine for All Ports, Pinned Ports
 Only, Copy ssh Command, Show Log and Forget Machine. Settings… holds Open at
 login, notifications and Connection Logs.
 
-Everything else, from the all-ports rules to where the files live, is in
-[documentation/USAGE.md](documentation/USAGE.md).
+## Skills
 
-## Documentation
+The documentation is a set of skills in [`.agents/skills/`](.agents/skills)
+(`.claude/skills` links to it). Open the repository in Claude Code or another
+agent that reads them and ask; or read the `SKILL.md` files directly, they
+are written for people too.
 
-| Document | For |
+| Skill | Ask it for |
 |---|---|
-| [USAGE.md](documentation/USAGE.md) | every menu item, the all-ports and offset rules, reconnection, files, security notes |
-| [DESIGN.md](documentation/DESIGN.md) | the decisions, module boundaries and the ssh mechanics |
-| [TESTING.md](documentation/TESTING.md) | the test suite, the Docker lab, manual drills and debug variables |
-| [CONTRIBUTING.md](documentation/CONTRIBUTING.md) | how to propose a change |
-| [SECURITY.md](documentation/SECURITY.md) | reporting a vulnerability, and the trust model |
-| [CHANGELOG.md](documentation/CHANGELOG.md) | what changed in each version |
-| [CODE_OF_CONDUCT.md](documentation/CODE_OF_CONDUCT.md) | how we treat each other |
+| [tunnels-usage](.agents/skills/tunnels-usage/SKILL.md) | how to use the app: every menu item, all-ports and offsets, reconnection, files |
+| [tunnels-dev](.agents/skills/tunnels-dev/SKILL.md) | building and running from source, the Docker lab, logging, the snapshot harness |
+| [tunnels-test](.agents/skills/tunnels-test/SKILL.md) | verifying a change: the CI checks, writing a core test, the manual drills |
+| [tunnels-contribute](.agents/skills/tunnels-contribute/SKILL.md) | making and pushing a change: steps, commit format, house rules |
+| [tunnels-design](.agents/skills/tunnels-design/SKILL.md) | the decisions, module boundaries and ssh mechanics |
+| [tunnels-security](.agents/skills/tunnels-security/SKILL.md) | the trust model, the review checklist, reporting a vulnerability |
+| [tunnels-release](.agents/skills/tunnels-release/SKILL.md) | what CI does, tagging a version, what the release workflow publishes |
+
+[CHANGELOG.md](CHANGELOG.md) records what changed in each version.
 
 ## License
 
