@@ -34,6 +34,15 @@ public struct ForwardSpec: Hashable, Sendable, Codable {
     public var portLabel: String {
         localPort == remotePort ? "\(localPort)" : "\(localPort) → \(remotePort)"
     }
+
+    /// The remote end is the machine itself, so its listeners can be checked over the same connection.
+    public var isLoopbackRemote: Bool { remoteHost == "localhost" || remoteHost == "127.0.0.1" }
+
+    /// Display name for an ad-hoc forward: the remote port, or host:port when
+    /// the remote host is not localhost.
+    public var remoteHostLabel: String {
+        remoteHost == "localhost" || remoteHost == "127.0.0.1" ? "\(remotePort)" : "\(remoteHost):\(remotePort)"
+    }
 }
 
 /// What the user asked for (the switch) versus what ssh reports.
