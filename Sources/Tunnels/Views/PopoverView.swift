@@ -9,7 +9,7 @@ struct PopoverView: View {
     @State private var listHeight: CGFloat = 0
 
     private var showsQuickOpen: Bool {
-        model.quickOpenVisible || (model.sectionAliases.isEmpty && model.favouritesProblems.isEmpty)
+        model.quickOpenVisible || (model.sectionAliases.isEmpty && model.fileProblems.isEmpty)
     }
 
     var body: some View {
@@ -49,7 +49,7 @@ struct PopoverView: View {
             // size the scroll area to it, up to a cap.
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    if !model.favouritesProblems.isEmpty {
+                    if !model.fileProblems.isEmpty {
                         problemsRow
                     }
                     ForEach(model.sectionAliases, id: \.self) { alias in
@@ -106,7 +106,7 @@ struct PopoverView: View {
             RowIcon(symbol: "exclamationmark", tint: .orange)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Favourites file has problems").font(.system(size: 13))
-                ForEach(model.favouritesProblems, id: \.self) { problem in
+                ForEach(model.fileProblems, id: \.self) { problem in
                     Text(problem).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
             }

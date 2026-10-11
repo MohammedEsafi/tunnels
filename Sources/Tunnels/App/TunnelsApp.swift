@@ -9,9 +9,9 @@ enum TunnelsMain {
         exitIfAlreadyRunning()
         let app = NSApplication.shared
         let delegate = AppDelegate()
-        app.delegate = delegate
+        app.delegate = delegate  // an unowned reference: keep the delegate alive ourselves
         app.setActivationPolicy(.accessory)
-        app.run()
+        withExtendedLifetime(delegate) { app.run() }
     }
 
     /// Two copies would share the favourites file, the state file and the

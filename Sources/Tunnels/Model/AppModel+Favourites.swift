@@ -125,13 +125,17 @@ extension AppModel {
     }
 
     /// Edits to the favourites file are best effort from the menu's point of
-    /// view: the in-memory state changes either way, and a failed write is logged.
+    /// view: the in-memory state changes either way, and a failed write shows
+    /// in the problems row until a later write succeeds.
     @discardableResult
     func editFavourites<T>(_ action: String, _ edit: () throws -> T) -> T? {
         do {
-            return try edit()
+            let result = try edit()
+            favouritesWriteProblem = nil
+            return result
         } catch {
             DebugLog.log("favourites: \(action) failed: \(error)")
+            favouritesWriteProblem = "Could not write \(favouritesURL.lastPathComponent): \(error.localizedDescription)"
             return nil
         }
     }
