@@ -1,5 +1,9 @@
 # Tunnels
 
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](Package.swift)
+[![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)](Package.swift)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2ECC71)](LICENSE)
+
 A macOS menu bar app that manages SSH local port forwards on demand. It lives
 only in the menu bar: click the icon to see every forward grouped by machine,
 switch forwards on and off, and let the app bring them back after sleep or a
@@ -181,3 +185,7 @@ Development environment variables (never needed in normal use):
 | `TUNNELS_SNAPSHOT_SETTINGS` | Show the Settings window instead |
 
 See `CHECKS.md` for the manual checks run against a local sshd.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
