@@ -35,35 +35,42 @@ final class StatusItemController {
 
     private func render() {
         guard let button = statusItem.button else { return }
-        let active = model.controller.activeCount
-        let dropped = model.controller.droppedCount
-        button.image = StatusItemController.ringGlyph(attention: dropped > 0)
-        button.title = active > 0 || dropped > 0 ? " \(active)" : ""
-        button.appearsDisabled = active == 0 && dropped == 0 && !model.controller.anyDesired
-        button.toolTip = dropped > 0
-            ? "Tunnels: \(active) active, \(dropped) dropped"
-            : (active > 0 ? "Tunnels: \(active) active" : "Tunnels: nothing forwarding")
+        button.image = StatusItemController.archesGlyph()
+        button.title = ""
+        // Dimmed while nothing is forwarding, the way Wi-Fi dims when off.
+        button.appearsDisabled = !model.controller.anyDesired
+        button.toolTip = "Tunnels"
     }
 
-    /// The app icon's tilted ring at menu bar size, as a template image so it
-    /// follows the menu bar's light or dark appearance. With `attention` a
-    /// dot sits inside the ring.
-    static func ringGlyph(attention: Bool) -> NSImage {
+    /// The app icon's receding arches at menu bar size, as a template image
+    /// so it follows the menu bar's light or dark appearance. No count, no
+    /// state: problems are reported by notification and inside the menu.
+    static func archesGlyph() -> NSImage {
         let size = NSSize(width: 18, height: 16)
         let image = NSImage(size: size, flipped: false) { _ in
             guard let context = NSGraphicsContext.current?.cgContext else { return false }
-            context.saveGState()
-            context.translateBy(x: 9, y: 8)
-            context.rotate(by: 28 * .pi / 180)
-            let ring = CGRect(x: -6.5, y: -4.5, width: 13, height: 9)
+            context.setLineCap(.round)
+            context.setLineWidth(1.9)
+
+            // Outer arch, dim.
+            let outer = CGMutablePath()
+            outer.move(to: CGPoint(x: 3, y: 2))
+            outer.addLine(to: CGPoint(x: 3, y: 8))
+            outer.addArc(center: CGPoint(x: 9, y: 8), radius: 6, startAngle: .pi, endAngle: 0, clockwise: true)
+            outer.addLine(to: CGPoint(x: 15, y: 2))
+            context.setStrokeColor(NSColor.black.withAlphaComponent(0.45).cgColor)
+            context.addPath(outer)
+            context.strokePath()
+
+            // Inner arch, full.
+            let inner = CGMutablePath()
+            inner.move(to: CGPoint(x: 6.5, y: 2))
+            inner.addLine(to: CGPoint(x: 6.5, y: 8))
+            inner.addArc(center: CGPoint(x: 9, y: 8), radius: 2.5, startAngle: .pi, endAngle: 0, clockwise: true)
+            inner.addLine(to: CGPoint(x: 11.5, y: 2))
             context.setStrokeColor(NSColor.black.cgColor)
-            context.setLineWidth(2.2)
-            context.strokeEllipse(in: ring)
-            if attention {
-                context.setFillColor(NSColor.black.cgColor)
-                context.fillEllipse(in: CGRect(x: -1.6, y: -1.6, width: 3.2, height: 3.2))
-            }
-            context.restoreGState()
+            context.addPath(inner)
+            context.strokePath()
             return true
         }
         image.isTemplate = true
