@@ -19,6 +19,15 @@ public final class ForwardController {
     /// Set by the reconnector. Receives the alias and ssh's last output.
     public var onMasterDropped: (@MainActor (String, String) -> Void)?
 
+    /// Machines in all-ports mode that are switched on.
+    public private(set) var autoHosts: Set<String> = []
+    /// Ports not to forward, per auto host.
+    public private(set) var autoExcluded: [String: Set<Int>] = [:]
+    /// How often an auto host is scanned.
+    public var discoveryInterval: TimeInterval = 5
+    private var discoveryLoops: [String: Task<Void, Never>] = [:]
+    private var scanning: Set<String> = []
+
     public init(runner: any ProcessRunning, socketDirectory: URL) {
         self.runner = runner
         self.socketDirectory = socketDirectory
@@ -26,11 +35,11 @@ public final class ForwardController {
 
     // MARK: Reading state
 
-    /// Machine aliases in display order: those with forwards, plus any that
-    /// still have a live or failing master.
+    /// Machine aliases in display order: those with forwards, auto hosts that
+    /// are on, plus any that still have a live or failing master.
     public var machines: [String] {
         let live = machineStates.filter { $0.value != .disconnected }.map(\.key)
-        return Array(Set(forwards.map(\.spec.machine)).union(live)).sorted()
+        return Array(Set(forwards.map(\.spec.machine)).union(live).union(autoHosts)).sorted()
     }
 
     public func forwards(on alias: String) -> [Forward] {
@@ -102,8 +111,90 @@ public final class ForwardController {
         }
     }
 
+    // MARK: All ports
+
+    /// Watch a machine and forward every listener it has, except `excluded`.
+    public func enableAutoHost(_ alias: String, excluded: Set<Int> = []) {
+        autoExcluded[alias] = excluded
+        guard !autoHosts.contains(alias) else { return }
+        autoHosts.insert(alias)
+        discoveryLoops[alias] = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.scan(alias)
+                let interval = self?.discoveryInterval ?? 5
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            }
+        }
+    }
+
+    /// Stop watching and close the discovered forwards. Pinned ones stay.
+    public func disableAutoHost(_ alias: String) async {
+        discoveryLoops[alias]?.cancel()
+        discoveryLoops[alias] = nil
+        autoHosts.remove(alias)
+        for forward in forwards(on: alias) where forward.isDiscovered {
+            await close(forward)
+            forwards.removeAll { $0.id == forward.id }
+        }
+        if !forwards(on: alias).contains(where: { $0.desiredOn }), let master = masters[alias] {
+            await master.stop()
+            masters[alias] = nil
+            machineStates[alias] = .disconnected
+        }
+    }
+
+    /// "Not this one": drop a discovered port and keep it dropped.
+    public func excludePort(_ port: Int, on alias: String) async {
+        autoExcluded[alias, default: []].insert(port)
+        for forward in forwards(on: alias) where forward.isDiscovered && forward.spec.localPort == port {
+            await close(forward)
+            forwards.removeAll { $0.id == forward.id }
+        }
+    }
+
+    public func includePort(_ port: Int, on alias: String) {
+        autoExcluded[alias]?.remove(port)
+    }
+
+    /// One discovery pass: add forwards for new listeners, drop vanished ones,
+    /// retry the ones that failed (a local port may have freed up).
+    public func scan(_ alias: String) async {
+        guard autoHosts.contains(alias), !scanning.contains(alias) else { return }
+        scanning.insert(alias)
+        defer { scanning.remove(alias) }
+        let master: SSHMaster
+        do {
+            master = try await ensureMaster(alias)
+        } catch {
+            let reason = (error as? SSHError)?.errorDescription ?? error.localizedDescription
+            machineStates[alias] = .failed(reason: reason)
+            return
+        }
+        guard let output = try? await master.run(PortDiscovery.command) else { return }
+        let excluded = autoExcluded[alias] ?? []
+        let pinnedLocal = Set(forwards(on: alias).filter { !$0.isDiscovered }.map(\.spec.localPort))
+        let wanted = PortDiscovery.parse(output).subtracting(excluded).subtracting(pinnedLocal)
+        let current = forwards(on: alias).filter(\.isDiscovered)
+
+        for forward in current where !wanted.contains(forward.spec.localPort) {
+            await close(forward)
+            forwards.removeAll { $0.id == forward.id }
+        }
+        for port in wanted.sorted() where !current.contains(where: { $0.spec.localPort == port }) {
+            let forward = Forward(spec: ForwardSpec(machine: alias, localPort: port), name: String(port), isFavourite: false, isDiscovered: true, desiredOn: true)
+            forwards.append(forward)
+            await open(forward)
+        }
+        for forward in forwards(on: alias) where forward.isDiscovered {
+            if case .error = forward.state { await open(forward) }
+        }
+    }
+
     /// The master switch: every forward on the machine on or off.
     public func setMachine(alias: String, on: Bool) async {
+        if !on, autoHosts.contains(alias) {
+            await disableAutoHost(alias)
+        }
         if on {
             for index in forwards.indices where forwards[index].spec.machine == alias {
                 forwards[index].desiredOn = true
@@ -179,6 +270,8 @@ public final class ForwardController {
 
     /// Called on quit. Desired state is left untouched so it can be persisted.
     public func shutdown() async {
+        for (_, loop) in discoveryLoops { loop.cancel() }
+        discoveryLoops = [:]
         // Forget the masters first so their exit callbacks are not taken for drops.
         let current = masters
         masters = [:]
@@ -194,6 +287,8 @@ public final class ForwardController {
     /// Synchronous variant for `applicationShouldTerminate`, where AppKit does
     /// not run main-actor tasks. Idempotent with `shutdown()`.
     public func shutdownNow() {
+        for (_, loop) in discoveryLoops { loop.cancel() }
+        discoveryLoops = [:]
         let current = masters
         masters = [:]
         for (alias, master) in current {

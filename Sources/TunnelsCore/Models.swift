@@ -61,13 +61,16 @@ public struct Forward: Identifiable, Hashable, Sendable {
     public var spec: ForwardSpec
     public var name: String
     public var isFavourite: Bool
+    /// Found by all-ports discovery; it exists while the remote listens.
+    public var isDiscovered: Bool
     public var desiredOn: Bool
     public var state: ForwardState
 
-    public init(spec: ForwardSpec, name: String, isFavourite: Bool, desiredOn: Bool = false, state: ForwardState = .off) {
+    public init(spec: ForwardSpec, name: String, isFavourite: Bool, isDiscovered: Bool = false, desiredOn: Bool = false, state: ForwardState = .off) {
         self.spec = spec
         self.name = name
         self.isFavourite = isFavourite
+        self.isDiscovered = isDiscovered
         self.desiredOn = desiredOn
         self.state = state
     }

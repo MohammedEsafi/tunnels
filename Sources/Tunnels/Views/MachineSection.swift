@@ -11,9 +11,14 @@ struct MachineSection: View {
     private var external: [ExternalForward] { model.external(on: alias) }
     private var state: MachineState { model.controller.machineState(alias) }
 
+    @State private var hovering = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            if model.modeQuestion == alias {
+                question
+            }
             ForEach(forwards) { forward in
                 ForwardRow(forward: forward)
             }
@@ -24,13 +29,32 @@ struct MachineSection: View {
         .padding(.bottom, 2)
     }
 
+    private var isAuto: Bool { model.isAutoHost(alias) }
+
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Text(alias).font(.system(size: 13, weight: .bold)).lineLimit(1)
+            if isAuto {
+                Image(systemName: "infinity")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .help("All ports")
+                    .accessibilityLabel("all ports")
+            }
             Spacer(minLength: 4)
-            if !forwards.isEmpty {
+            if hovering && isAuto {
+                Button {
+                    model.forgetAutoHost(alias)
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Stop watching all ports and forget")
+                .accessibilityLabel("Forget all ports on \(alias)")
+            }
+            if !forwards.isEmpty || isAuto {
                 Toggle("", isOn: Binding(
-                    get: { forwards.contains { $0.desiredOn } },
+                    get: { forwards.contains { $0.desiredOn } || model.isWatching(alias) || model.modeQuestion == alias },
                     set: { model.setMachine(alias, on: $0) }
                 ))
                 .toggleStyle(.switch)
@@ -42,6 +66,24 @@ struct MachineSection: View {
         .padding(.horizontal, 10)
         .frame(height: 30)
         .padding(.top, 4)
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+    }
+
+    /// Asked when an all-ports host is switched on.
+    private var question: some View {
+        HStack(spacing: 8) {
+            Button("All ports") { model.enableAllPorts(alias) }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .keyboardShortcut(.defaultAction)
+            Button("Pinned only") { model.enablePinnedOnly(alias) }
+                .controlSize(.small)
+                .disabled(forwards.isEmpty)
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
     }
 
 }

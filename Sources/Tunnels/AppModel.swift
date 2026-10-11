@@ -14,6 +14,10 @@ final class AppModel {
     let favouritesURL: URL
 
     private(set) var favourites: [Favourite] = []
+    /// Machines known to the favourites file as all-ports hosts.
+    private(set) var autoHosts: [AutoHost] = []
+    /// The host whose switch was just turned on and needs the question answered.
+    var modeQuestion: String?
     private(set) var favouritesProblems: [String] = []
     /// ssh config Hosts first, then Tailscale peers not already covered.
     private(set) var hosts: [HostEntry] = []
@@ -28,7 +32,7 @@ final class AppModel {
     var popoverVisible = false {
         didSet {
             popoverVisible ? startExternalScanning() : stopExternalScanning()
-            if popoverVisible { reloadHosts() } else { quickOpenVisible = false; quickOpenText = ""; menuPage = .main }
+            if popoverVisible { reloadHosts() } else { quickOpenVisible = false; quickOpenText = ""; menuPage = .main; modeQuestion = nil }
         }
     }
 
@@ -148,6 +152,7 @@ final class AppModel {
     // MARK: Favourites and hosts
 
     func reloadFavourites() {
+        autoHosts = Favourites.loadHosts(from: favouritesURL)
         do {
             favourites = try Favourites.load(from: favouritesURL)
             favouritesProblems = []
@@ -221,8 +226,13 @@ final class AppModel {
     }
 
     func setMachine(_ alias: String, on: Bool) {
-        if !on { reconnector.cancel(alias) }
-        Task { await controller.setMachine(alias: alias, on: on) }
+        if on {
+            switchOn(alias)
+        } else {
+            modeQuestion = nil
+            reconnector.cancel(alias)
+            Task { await controller.setMachine(alias: alias, on: false) }
+        }
     }
 
     func retryNow(_ alias: String) {
@@ -290,10 +300,64 @@ final class AppModel {
         }
     }
 
-    /// Aliases shown in the popover: machines with app forwards plus those
-    /// that only have forwards from other ssh processes.
+    /// Aliases shown in the popover: machines with app forwards, all-ports
+    /// hosts (on or off), plus those that only have outside forwards.
     var sectionAliases: [String] {
-        Array(Set(controller.machines).union(external.map(\.spec.machine))).sorted()
+        Array(Set(controller.machines).union(external.map(\.spec.machine)).union(autoHosts.map(\.name))).sorted()
+    }
+
+    // MARK: All ports
+
+    func isAutoHost(_ alias: String) -> Bool {
+        autoHosts.contains { $0.name == alias }
+    }
+
+    func isWatching(_ alias: String) -> Bool {
+        controller.autoHosts.contains(alias)
+    }
+
+    /// From the suggestion, or the question: watch every port on the machine.
+    func enableAllPorts(_ alias: String) {
+        modeQuestion = nil
+        if !isAutoHost(alias) {
+            try? Favourites.addHost(AutoHost(name: alias), to: favouritesURL)
+            reloadFavourites()
+        }
+        let excluded = autoHosts.first { $0.name == alias }?.excluded ?? []
+        controller.enableAutoHost(alias, excluded: excluded)
+    }
+
+    /// The question's other answer: just the pinned forwards.
+    func enablePinnedOnly(_ alias: String) {
+        modeQuestion = nil
+        Task { await controller.setMachine(alias: alias, on: true) }
+    }
+
+    /// Switch on a host: ask when it is an all-ports host, otherwise just open.
+    func switchOn(_ alias: String) {
+        if isAutoHost(alias) {
+            modeQuestion = alias
+        } else {
+            Task { await controller.setMachine(alias: alias, on: true) }
+        }
+    }
+
+    /// "Not this one" on a discovered row.
+    func excludePort(_ forward: Forward) {
+        let alias = forward.spec.machine
+        Task {
+            await controller.excludePort(forward.spec.localPort, on: alias)
+            try? Favourites.setExcluded(controller.autoExcluded[alias] ?? [], forHost: alias, in: favouritesURL)
+            reloadFavourites()
+        }
+    }
+
+    /// × on an all-ports host row: stop watching and forget the mode.
+    func forgetAutoHost(_ alias: String) {
+        modeQuestion = nil
+        try? Favourites.removeHost(alias, from: favouritesURL)
+        reloadFavourites()
+        Task { await controller.disableAutoHost(alias) }
     }
 
     func external(on alias: String) -> [ExternalForward] {
@@ -315,9 +379,12 @@ final class AppModel {
     /// parallel so one that is unreachable cannot hold the others up.
     private func restoreState() async {
         let state = PersistedState.load()
-        guard !state.onForwards.isEmpty else { return }
+        guard !state.onForwards.isEmpty || !state.autoHostsOn.isEmpty else { return }
         isRestoring = true
         defer { isRestoring = false }
+        for alias in state.autoHostsOn where isAutoHost(alias) {
+            enableAllPorts(alias)
+        }
         let byMachine = Dictionary(grouping: state.onForwards, by: \.spec.machine)
         await withTaskGroup(of: Void.self) { group in
             for (_, entries) in byMachine {

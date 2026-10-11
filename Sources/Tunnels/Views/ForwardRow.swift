@@ -29,7 +29,7 @@ struct ForwardRow: View {
                 RowIcon(symbol: symbol, tint: tint)
             }
             Button {
-                model.setForward(forward, on: !forward.desiredOn)
+                if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: !forward.desiredOn) }
             } label: {
                 HStack(spacing: 6) {
                     Text(portIsName ? String(forward.spec.localPort) : forward.name)
@@ -46,12 +46,12 @@ struct ForwardRow: View {
 
             if hovering {
                 Button {
-                    model.removeForward(forward)
+                    if forward.isDiscovered { model.excludePort(forward) } else { model.removeForward(forward) }
                 } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Close and forget")
+                .help(forward.isDiscovered ? "Not this port" : "Close and forget")
                 .accessibilityLabel("Remove \(forward.name)")
             }
             if !portIsName || forward.spec.localPort != forward.spec.remotePort {
@@ -59,7 +59,9 @@ struct ForwardRow: View {
             }
             Toggle("", isOn: Binding(
                 get: { forward.desiredOn },
-                set: { model.setForward(forward, on: $0) }
+                set: { on in
+                    if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: on) }
+                }
             ))
             .toggleStyle(.switch)
             .controlSize(.small)
