@@ -38,7 +38,7 @@ final class StatusItemController {
         button.image = StatusItemController.archesGlyph()
         button.title = ""
         // Dimmed while nothing is forwarding, the way Wi-Fi dims when off.
-        button.appearsDisabled = !model.controller.anyDesired
+        button.appearsDisabled = !model.anyDesired
         button.toolTip = "Tunnels"
     }
 

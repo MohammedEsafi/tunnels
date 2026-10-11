@@ -7,8 +7,8 @@ import TunnelsCore
 @Observable
 @MainActor
 final class AppModel {
-    static let shared = AppModel()
-
+    /// The engine. Views never touch it: they read through the accessors
+    /// below and act through the methods in the extension files.
     let controller: ForwardController
     let reconnector: Reconnector
     let favouritesURL: URL
@@ -66,7 +66,7 @@ final class AppModel {
     /// Debug only: a row that should open its port editor when it appears.
     var debugEditPort: ForwardSpec?
 
-    private init() {
+    init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Tunnels")
         let sockets = ProcessInfo.processInfo.environment["TUNNELS_SOCKET_DIR"].map { URL(fileURLWithPath: $0) }
@@ -117,6 +117,17 @@ final class AppModel {
             await sweepStaleMasters()
             await restoreState()
         }
+    }
+
+    // MARK: What the views read
+
+    func forwards(on alias: String) -> [Forward] { controller.forwards(on: alias) }
+    func machineState(_ alias: String) -> MachineState { controller.machineState(alias) }
+    var anyDesired: Bool { controller.anyDesired }
+    var loggedAliases: [String] { controller.logs.keys.sorted() }
+    func log(for alias: String) -> [String]? { controller.logs[alias] }
+    func isOn(_ favourite: Favourite) -> Bool {
+        controller.forwards.first { $0.spec == favourite.spec }?.desiredOn ?? false
     }
 
     /// Masters left behind by a crash or force quit would hold our ports.

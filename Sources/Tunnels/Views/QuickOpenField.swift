@@ -17,7 +17,7 @@ struct QuickOpenField: View {
     /// Forwards already on are not worth suggesting; the switch is right there.
     private var suggestions: [Suggestion] {
         let off = model.favourites.filter { favourite in
-            !(model.controller.forwards.first { $0.spec == favourite.spec }?.desiredOn ?? false)
+            !model.isOn(favourite)
         }
         return QuickOpen.suggestions(for: text, favourites: off, hosts: model.hosts)
     }
