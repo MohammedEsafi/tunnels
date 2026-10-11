@@ -174,7 +174,10 @@ private struct AutoHostRow: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(host.name).font(.system(size: 13))
-                Text(host.excluded.isEmpty ? "all ports" : "all ports except \(host.excluded.sorted().map(String.init).joined(separator: ", "))")
+                Text([
+                    host.excluded.isEmpty ? "all ports" : "all ports except \(host.excluded.sorted().map(String.init).joined(separator: ", "))",
+                    host.offset.map { "moved ports +\($0)" },
+                ].compactMap { $0 }.joined(separator: " · "))
                     .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()

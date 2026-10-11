@@ -15,10 +15,13 @@ public struct Favourite: Equatable, Hashable, Sendable {
 public struct AutoHost: Equatable, Hashable, Sendable {
     public var name: String
     public var excluded: Set<Int>
+    /// Added to a remote port when its plain local number was taken.
+    public var offset: Int?
 
-    public init(name: String, excluded: Set<Int> = []) {
+    public init(name: String, excluded: Set<Int> = [], offset: Int? = nil) {
         self.name = name
         self.excluded = excluded
+        self.offset = offset
     }
 }
 
@@ -90,7 +93,7 @@ public enum Favourites {
                 if case .array(let items) = value { return items.compactMap(\.integer) }
                 return nil
             }) ?? [])
-            return AutoHost(name: name, excluded: excluded)
+            return AutoHost(name: name, excluded: excluded, offset: table["offset"]?.integer)
         }
     }
 
@@ -274,6 +277,18 @@ public extension Favourites {
                 // (the gap before the next block) stay where they are.
                 let last = kept.lastIndex { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? kept.count - 1
                 kept.insert("exclude = [\(excluded.sorted().map(String.init).joined(separator: ", "))]", at: last + 1)
+            }
+            return kept
+        }
+    }
+
+    @discardableResult
+    public static func setOffset(_ offset: Int?, forHost name: String, in url: URL = defaultURL) throws -> Bool {
+        try editHostBlock(name, in: url) { lines in
+            var kept = lines.filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("offset") }
+            if let offset {
+                let last = kept.lastIndex { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? kept.count - 1
+                kept.insert("offset = \(offset)", at: last + 1)
             }
             return kept
         }

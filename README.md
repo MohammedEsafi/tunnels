@@ -95,6 +95,15 @@ Problems in the file are shown at the top of the popover with an Open button.
   Answering "Pinned only" freezes what the host had: the ports that were
   open when you switched it off, minus the ones you closed, become ordinary
   pinned forwards, and watching stops for good.
+- **When two machines offer the same port.** Only one can be `localhost:8080`.
+  The first keeps the plain number. When a discovered port on another
+  machine is taken locally, that machine gets an offset, +10000 for the
+  first such machine, +20000 for the next, and every clashing port on it
+  lands on remote plus offset: `18080 → 8080`. Ports that don't clash stay
+  plain. One notification tells you the rule when it first happens; the
+  offset is kept on the host's entry (`offset = 10000`) until you leave
+  all-ports mode. Pinned forwards are never moved: a clash there stays red
+  because you asked for that number.
 - **A forward with nothing behind it.** A pinned forward whose remote port has
   no listener shows an orange circle with the tooltip "Nothing listening on
   host:port". It is open and will work the moment something starts there;

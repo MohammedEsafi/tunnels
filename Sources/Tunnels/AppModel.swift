@@ -117,6 +117,16 @@ final class AppModel {
             guard self?.notifyOnGiveUp ?? true else { return }
             Notifier.post(title: "\(alias) is down", body: "\(reason). Open Tunnels to retry.")
         }
+        controller.onOffsetAssigned = { [weak self] alias, offset in
+            guard let self else { return }
+            try? Favourites.setOffset(offset, forHost: alias, in: favouritesURL)
+            reloadFavourites()
+            guard notifyOnGiveUp else { return }
+            Notifier.post(
+                title: "\(alias) ports moved",
+                body: "Some ports were taken, so \(alias) uses +\(offset). For example \(8080 + offset) is its 8080."
+            )
+        }
         reconnector.onReconnected = { [weak self] alias, elapsed in
             guard let self, notifyOnGiveUp else { return }
             let open = controller.forwards(on: alias).filter { $0.state == .active }.count
@@ -329,13 +339,14 @@ final class AppModel {
             try? Favourites.setExcluded([], forHost: alias, in: favouritesURL)
         }
         reloadFavourites()
-        controller.enableAutoHost(alias, excluded: [])
+        let offset = autoHosts.first { $0.name == alias }?.offset
+        controller.enableAutoHost(alias, excluded: [], offset: offset)
     }
 
-    /// At launch: resume watching with the exclusions on file.
+    /// At launch: resume watching with the exclusions and offset on file.
     private func resumeAllPorts(_ alias: String) {
-        let excluded = autoHosts.first { $0.name == alias }?.excluded ?? []
-        controller.enableAutoHost(alias, excluded: excluded)
+        let host = autoHosts.first { $0.name == alias }
+        controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: host?.offset)
     }
 
     /// The question's other answer: freeze what all-ports mode had found.

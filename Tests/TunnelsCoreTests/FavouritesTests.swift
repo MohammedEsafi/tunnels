@@ -185,6 +185,11 @@ final class FavouritesTests: XCTestCase {
         XCTAssertFalse(text.contains("\n\n\n"), "blank lines accumulated:\n\(text)")
         XCTAssertTrue(text.contains("all_ports = true\nexclude = [3000, 3003]\n"))
 
+        XCTAssertTrue(try Favourites.setOffset(10000, forHost: "echo", in: url))
+        XCTAssertEqual(Favourites.loadHosts(from: url).first?.offset, 10000)
+        XCTAssertTrue(try Favourites.setOffset(nil, forHost: "echo", in: url))
+        XCTAssertNil(Favourites.loadHosts(from: url).first?.offset)
+
         XCTAssertTrue(try Favourites.removeHost("echo", from: url))
         XCTAssertFalse(try Favourites.removeHost("nope", from: url))
         XCTAssertEqual(Favourites.loadHosts(from: url), [AutoHost(name: "gpu")])
