@@ -83,11 +83,11 @@ Problems in the file are shown at the top of the popover with an Open button.
   Typing part of a favourite name or a Host alias shows suggestions; arrow
   keys and Return pick one. Ad-hoc forwards appear under their machine and
   can be removed with the × that shows on hover.
-- **All ports.** Type a machine name alone and pick the `∞ all ports` row.
+- **All ports.** Type a machine name alone and pick the `all ports` row.
   The app then watches that machine over the same connection, every five
   seconds, and forwards every TCP listener it finds (1024 up to 32767, below
   the ephemeral range) to the same local port, adding and removing forwards
-  as services come and go. The host shows an ∞ after its name; its port rows
+  as services come and go. The host shows a small layers glyph after its name; its port rows
   have no name. Switch a port off to say "not this one", which is
   remembered. Switching the host off stops watching; switching it on again
   asks whether you want all ports or only the pinned ones, and answering

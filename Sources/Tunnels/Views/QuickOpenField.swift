@@ -128,8 +128,7 @@ private struct SuggestionRow: View {
                 Text(host.source == .tailscale ? "Tailscale" : "SSH config").foregroundStyle(secondary).font(.system(size: 11))
             case .allPorts(let host):
                 Text(host)
-                Image(systemName: "infinity").font(.system(size: 11, weight: .semibold)).foregroundStyle(secondary)
-                Text("all ports").foregroundStyle(secondary).font(.system(size: 12))
+                Text("· all ports").foregroundStyle(secondary).font(.system(size: 12))
                 Spacer()
                 Text("↩").foregroundStyle(secondary).font(.system(size: 11))
             case .spec(let spec):

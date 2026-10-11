@@ -33,8 +33,8 @@ struct MachineSection: View {
         HStack(spacing: 6) {
             Text(alias).font(.system(size: 13, weight: .bold)).lineLimit(1)
             if isAuto {
-                Image(systemName: "infinity")
-                    .font(.system(size: 11, weight: .semibold))
+                Image(systemName: "square.3.layers.3d")
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .help("All ports")
                     .accessibilityLabel("all ports")
