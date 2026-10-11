@@ -46,28 +46,28 @@ public enum Favourites {
     }
 
     public static let template = """
-    # Tunnels favourites. One [[favourite]] per forward.
-    #
-    #   name        label shown in the menu
-    #   host        a Host alias from ~/.ssh/config
-    #   port        local port on this Mac (127.0.0.1 only)
-    #   remote_port port on the remote side, defaults to `port`
-    #   remote_host host as seen from the machine, defaults to "localhost"
-    #
-    # Example:
-    #
-    # [[favourite]]
-    # name = "postgres"
-    # host = "prod-db-01"
-    # port = 5432
-    #
-    # [[favourite]]
-    # name = "postgres"
-    # host = "staging"
-    # port = 15432
-    # remote_port = 5432
+        # Tunnels favourites. One [[favourite]] per forward.
+        #
+        #   name        label shown in the menu
+        #   host        a Host alias from ~/.ssh/config
+        #   port        local port on this Mac (127.0.0.1 only)
+        #   remote_port port on the remote side, defaults to `port`
+        #   remote_host host as seen from the machine, defaults to "localhost"
+        #
+        # Example:
+        #
+        # [[favourite]]
+        # name = "postgres"
+        # host = "prod-db-01"
+        # port = 5432
+        #
+        # [[favourite]]
+        # name = "postgres"
+        # host = "staging"
+        # port = 15432
+        # remote_port = 5432
 
-    """
+        """
 
     /// Load the file, creating a commented template on first run.
     public static func load(from url: URL = defaultURL) throws -> [Favourite] {
@@ -91,11 +91,13 @@ public enum Favourites {
         guard let tables = root["host"]?.tables else { return [] }
         return tables.compactMap { table in
             guard let name = table["name"]?.string?.trimmingCharacters(in: .whitespaces), !name.isEmpty,
-                  table["all_ports"]?.boolean ?? true else { return nil }
-            let excluded = Set((table["exclude"].flatMap { value -> [Int]? in
-                if case .array(let items) = value { return items.compactMap(\.integer) }
-                return nil
-            }) ?? [])
+                table["all_ports"]?.boolean ?? true
+            else { return nil }
+            let excluded = Set(
+                (table["exclude"].flatMap { value -> [Int]? in
+                    if case .array(let items) = value { return items.compactMap(\.integer) }
+                    return nil
+                }) ?? [])
             return AutoHost(name: name, excluded: excluded, offset: table["offset"]?.integer)
         }
     }
@@ -143,7 +145,9 @@ public enum Favourites {
                 continue
             }
             seen.insert(key)
-            result.append(Favourite(name: (name?.isEmpty == false ? name! : "\(remotePort)"), spec: spec, movedByApp: table["moved"]?.boolean ?? false))
+            result.append(
+                Favourite(
+                    name: (name?.isEmpty == false ? name! : "\(remotePort)"), spec: spec, movedByApp: table["moved"]?.boolean ?? false))
         }
         if !problems.isEmpty { throw FavouritesError(problems: problems) }
         return result

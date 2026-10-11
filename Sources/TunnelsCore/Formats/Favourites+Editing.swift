@@ -2,9 +2,9 @@ import Foundation
 
 // MARK: Writing
 
-public extension Favourites {
+extension Favourites {
     /// One [[favourite]] block. Only non-default keys are written.
-    static func serialize(_ favourite: Favourite) -> String {
+    public static func serialize(_ favourite: Favourite) -> String {
         var lines = [
             "[[favourite]]",
             "name = \"\(escape(favourite.name))\"",
@@ -21,21 +21,21 @@ public extension Favourites {
     }
 
     /// Append a favourite to the file, creating it (with the template) if needed.
-    static func add(_ favourite: Favourite, to url: URL = defaultURL) throws {
+    public static func add(_ favourite: Favourite, to url: URL = defaultURL) throws {
         try appendBlock(serialize(favourite), to: url)
     }
 
     /// Remove the [[favourite]] block whose host and port match. Other blocks
     /// and their comments are left exactly as they were.
     @discardableResult
-    static func remove(_ spec: ForwardSpec, from url: URL = defaultURL) throws -> Bool {
+    public static func remove(_ spec: ForwardSpec, from url: URL = defaultURL) throws -> Bool {
         try editBlock("favourite", in: url, matching: { $0.isFavourite(spec) }) { _ in nil }
     }
 
     /// Change the name of the [[favourite]] block matching host and port,
     /// touching no other line.
     @discardableResult
-    static func rename(_ spec: ForwardSpec, to name: String, in url: URL = defaultURL) throws -> Bool {
+    public static func rename(_ spec: ForwardSpec, to name: String, in url: URL = defaultURL) throws -> Bool {
         try editBlock("favourite", in: url, matching: { $0.isFavourite(spec) }) { lines in
             var lines = lines
             let nameLine = "name = \"\(escape(name))\""
@@ -51,14 +51,18 @@ public extension Favourites {
     /// Change the local port of the [[favourite]] block matching host and port.
     /// `movedByApp` records whether the app chose the new number.
     @discardableResult
-    static func changeLocalPort(_ spec: ForwardSpec, to newPort: Int, movedByApp: Bool = false, in url: URL = defaultURL) throws -> Bool {
+    public static func changeLocalPort(_ spec: ForwardSpec, to newPort: Int, movedByApp: Bool = false, in url: URL = defaultURL) throws
+        -> Bool
+    {
         try changePorts(spec, local: newPort, remote: spec.remotePort, movedByApp: movedByApp, in: url)
     }
 
     /// Change the local and remote ports of the [[favourite]] block matching
     /// host and port. `remote_port` is written only when it differs from `port`.
     @discardableResult
-    static func changePorts(_ spec: ForwardSpec, local: Int, remote: Int, movedByApp: Bool = false, in url: URL = defaultURL) throws -> Bool {
+    public static func changePorts(_ spec: ForwardSpec, local: Int, remote: Int, movedByApp: Bool = false, in url: URL = defaultURL) throws
+        -> Bool
+    {
         try editBlock("favourite", in: url, matching: { $0.isFavourite(spec) }) { lines in
             guard let portLine = lines.firstIndex(where: { key(of: $0) == "port" }) else { return lines }
             var lines = lines
@@ -80,7 +84,7 @@ public extension Favourites {
 
     // MARK: [[host]] blocks
 
-    static func addHost(_ host: AutoHost, to url: URL = defaultURL) throws {
+    public static func addHost(_ host: AutoHost, to url: URL = defaultURL) throws {
         var text = "[[host]]\nname = \"\(escape(host.name))\"\nall_ports = true\n"
         if !host.excluded.isEmpty {
             text += "exclude = [\(host.excluded.sorted().map(String.init).joined(separator: ", "))]\n"
@@ -89,19 +93,21 @@ public extension Favourites {
     }
 
     @discardableResult
-    static func removeHost(_ name: String, from url: URL = defaultURL) throws -> Bool {
+    public static func removeHost(_ name: String, from url: URL = defaultURL) throws -> Bool {
         try editBlock("host", in: url, matching: { $0["name"]?.string == name }) { _ in nil }
     }
 
     @discardableResult
-    static func setExcluded(_ excluded: Set<Int>, forHost name: String, in url: URL = defaultURL) throws -> Bool {
+    public static func setExcluded(_ excluded: Set<Int>, forHost name: String, in url: URL = defaultURL) throws -> Bool {
         try editBlock("host", in: url, matching: { $0["name"]?.string == name }) { lines in
-            replaceKey("exclude", in: lines, with: excluded.isEmpty ? nil : "exclude = [\(excluded.sorted().map(String.init).joined(separator: ", "))]")
+            replaceKey(
+                "exclude", in: lines,
+                with: excluded.isEmpty ? nil : "exclude = [\(excluded.sorted().map(String.init).joined(separator: ", "))]")
         }
     }
 
     @discardableResult
-    static func setOffset(_ offset: Int?, forHost name: String, in url: URL = defaultURL) throws -> Bool {
+    public static func setOffset(_ offset: Int?, forHost name: String, in url: URL = defaultURL) throws -> Bool {
         try editBlock("host", in: url, matching: { $0["name"]?.string == name }) { lines in
             replaceKey("offset", in: lines, with: offset.map { "offset = \($0)" })
         }
@@ -123,12 +129,15 @@ public extension Favourites {
     /// Find the first `[[kind]]` block whose parsed table satisfies `matches`
     /// and replace its lines with `change(lines)`; nil removes the block and
     /// the blank lines directly above it. Every other line stays as it was.
-    private static func editBlock(_ kind: String, in url: URL, matching matches: ([String: TOMLValue]) -> Bool, _ change: ([String]) -> [String]?) throws -> Bool {
+    private static func editBlock(
+        _ kind: String, in url: URL, matching matches: ([String: TOMLValue]) -> Bool, _ change: ([String]) -> [String]?
+    ) throws -> Bool {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
         var lines = text.components(separatedBy: "\n")
         for block in blocks(of: kind, in: lines) {
             guard let parsed = try? MiniTOML.parse(lines[block].joined(separator: "\n")),
-                  let table = parsed[kind]?.tables?.first, matches(table) else { continue }
+                let table = parsed[kind]?.tables?.first, matches(table)
+            else { continue }
             if let replacement = change(Array(lines[block])) {
                 lines.replaceSubrange(block, with: replacement)
             } else {
@@ -181,8 +190,8 @@ public extension Favourites {
     }
 }
 
-private extension Dictionary where Key == String, Value == TOMLValue {
-    func isFavourite(_ spec: ForwardSpec) -> Bool {
+extension Dictionary where Key == String, Value == TOMLValue {
+    fileprivate func isFavourite(_ spec: ForwardSpec) -> Bool {
         self["host"]?.string == spec.machine && self["port"]?.integer == spec.localPort
     }
 }

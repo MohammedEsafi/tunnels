@@ -37,10 +37,13 @@ struct MachineSection: View {
             }
             Spacer(minLength: 4)
             if !forwards.isEmpty || isAuto {
-                Toggle("", isOn: Binding(
-                    get: { forwards.contains { $0.desiredOn } || model.isWatching(alias) },
-                    set: { model.setMachine(alias, on: $0) }
-                ))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { forwards.contains { $0.desiredOn } || model.isWatching(alias) },
+                        set: { model.setMachine(alias, on: $0) }
+                    )
+                )
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .labelsHidden()
@@ -58,14 +61,18 @@ struct MachineSection: View {
     private var hostMenu: some View {
         // Toggles become checked menu items, so the tick is a real menu state
         // and the layout does not shift when the menu first appears.
-        Toggle("All Ports", isOn: Binding(
-            get: { isAuto },
-            set: { on in if on && !isAuto { model.enableAllPorts(alias) } }
-        ))
-        Toggle("Pinned Ports Only", isOn: Binding(
-            get: { !isAuto },
-            set: { on in if on && isAuto { model.enablePinnedOnly(alias) } }
-        ))
+        Toggle(
+            "All Ports",
+            isOn: Binding(
+                get: { isAuto },
+                set: { on in if on && !isAuto { model.enableAllPorts(alias) } }
+            ))
+        Toggle(
+            "Pinned Ports Only",
+            isOn: Binding(
+                get: { !isAuto },
+                set: { on in if on && isAuto { model.enablePinnedOnly(alias) } }
+            ))
         Divider()
         Button("Copy ssh Command") { model.copySSHCommand(alias) }
             .disabled(!forwards.contains { $0.desiredOn })

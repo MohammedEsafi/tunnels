@@ -191,11 +191,12 @@ struct LogsPage: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-                            .background(GeometryReader { proxy in
-                                Color.clear
-                                    .onAppear { textHeight = proxy.size.height }
-                                    .onChange(of: proxy.size.height) { _, next in textHeight = next }
-                            })
+                            .background(
+                                GeometryReader { proxy in
+                                    Color.clear
+                                        .onAppear { textHeight = proxy.size.height }
+                                        .onChange(of: proxy.size.height) { _, next in textHeight = next }
+                                })
                     }
                     .frame(height: min(max(textHeight, 24), 240))
                 }

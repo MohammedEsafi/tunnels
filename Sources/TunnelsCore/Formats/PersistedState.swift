@@ -36,7 +36,8 @@ public struct PersistedState: Codable, Equatable {
 
     public static func load(from url: URL = defaultURL) -> PersistedState {
         guard let data = try? Data(contentsOf: url),
-              let state = try? JSONDecoder().decode(PersistedState.self, from: data) else {
+            let state = try? JSONDecoder().decode(PersistedState.self, from: data)
+        else {
             return PersistedState()
         }
         return state

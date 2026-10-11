@@ -39,7 +39,10 @@ extension AppModel {
             if forward.isDiscovered {
                 // Pin it on the new number; discovery then leaves this remote port alone.
                 await controller.excludePort(remotePort: forward.spec.remotePort, on: forward.spec.machine)
-                editFavourites("setExcluded") { try Favourites.setExcluded(controller.autoExcluded[forward.spec.machine] ?? [], forHost: forward.spec.machine, in: self.favouritesURL) }
+                editFavourites("setExcluded") {
+                    try Favourites.setExcluded(
+                        controller.autoExcluded[forward.spec.machine] ?? [], forHost: forward.spec.machine, in: self.favouritesURL)
+                }
                 editFavourites("add") { try Favourites.add(Favourite(name: forward.name, spec: moved), to: self.favouritesURL) }
                 reloadFavourites()
                 if wantOn, let pinned = controller.forwards.first(where: { $0.spec == moved }) {
@@ -59,7 +62,9 @@ extension AppModel {
     /// A discovered port becomes an ordinary pinned forward with a name.
     func pinDiscovered(_ forward: Forward, name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        editFavourites("add") { try Favourites.add(Favourite(name: trimmed.isEmpty ? forward.name : trimmed, spec: forward.spec), to: self.favouritesURL) }
+        editFavourites("add") {
+            try Favourites.add(Favourite(name: trimmed.isEmpty ? forward.name : trimmed, spec: forward.spec), to: self.favouritesURL)
+        }
         reloadFavourites()
     }
 
@@ -74,7 +79,9 @@ extension AppModel {
             favouritesProblems = [error.localizedDescription]
         }
         controller.setFavourites(favourites)
-        DebugLog.log("favourites: \(favourites.count) from \(favouritesURL.path), problems: \(favouritesProblems), forwards: \(controller.forwards.count)")
+        DebugLog.log(
+            "favourites: \(favourites.count) from \(favouritesURL.path), problems: \(favouritesProblems), forwards: \(controller.forwards.count)"
+        )
     }
 
     func openFavouritesFile() {
@@ -100,7 +107,8 @@ extension AppModel {
         Task {
             await controller.addAdHoc(spec)
             if !favourites.contains(where: { $0.spec == spec }) {
-                let name = spec.isLoopbackRemote
+                let name =
+                    spec.isLoopbackRemote
                     ? String(spec.remotePort) : "\(spec.remoteHost):\(spec.remotePort)"
                 editFavourites("add") { try Favourites.add(Favourite(name: name, spec: spec), to: self.favouritesURL) }
                 reloadFavourites()

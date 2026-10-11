@@ -49,14 +49,17 @@ struct ForwardRow: View {
                 PortColumn(spec: forward.spec)
             }
 
-            Toggle("", isOn: Binding(
-                get: { forward.desiredOn },
-                set: { on in
-                    // Flipping the switch mid-edit applies the edit first.
-                    if editing == .port { commitPorts(on: on); return }
-                    if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: on) }
-                }
-            ))
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { forward.desiredOn },
+                    set: { on in
+                        // Flipping the switch mid-edit applies the edit first.
+                        if editing == .port { commitPorts(on: on); return }
+                        if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: on) }
+                    }
+                )
+            )
             .toggleStyle(.switch)
             .controlSize(.small)
             .labelsHidden()

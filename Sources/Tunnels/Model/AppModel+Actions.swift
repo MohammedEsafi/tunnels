@@ -35,8 +35,12 @@ extension AppModel {
     func openSSHConfig() {
         let path = sshConfigPath
         if !FileManager.default.fileExists(atPath: path) {
-            try? FileManager.default.createDirectory(atPath: (path as NSString).deletingLastPathComponent, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            FileManager.default.createFile(atPath: path, contents: Data("# Host example\n#   HostName 10.0.0.5\n#   User you\n".utf8), attributes: [.posixPermissions: 0o600])
+            try? FileManager.default.createDirectory(
+                atPath: (path as NSString).deletingLastPathComponent, withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700])
+            FileManager.default.createFile(
+                atPath: path, contents: Data("# Host example\n#   HostName 10.0.0.5\n#   User you\n".utf8),
+                attributes: [.posixPermissions: 0o600])
         }
         NSWorkspace.shared.open(URL(fileURLWithPath: path))
     }

@@ -49,7 +49,10 @@ extension AppModel {
         let pinnedAlready = Set(favourites.filter { $0.spec.machine == alias }.map(\.spec.localPort))
         let frozen = (controller.lastDiscovered[alias] ?? []).subtracting(pinnedAlready)
         for port in frozen.sorted() {
-            editFavourites("add") { try Favourites.add(Favourite(name: String(port), spec: ForwardSpec(machine: alias, localPort: port)), to: self.favouritesURL) }
+            editFavourites("add") {
+                try Favourites.add(
+                    Favourite(name: String(port), spec: ForwardSpec(machine: alias, localPort: port)), to: self.favouritesURL)
+            }
         }
         editFavourites("removeHost") { try Favourites.removeHost(alias, from: self.favouritesURL) }
         reloadFavourites()
@@ -78,7 +81,9 @@ extension AppModel {
         let alias = forward.spec.machine
         Task {
             await controller.excludePort(remotePort: forward.spec.remotePort, on: alias)
-            editFavourites("setExcluded") { try Favourites.setExcluded(controller.autoExcluded[alias] ?? [], forHost: alias, in: self.favouritesURL) }
+            editFavourites("setExcluded") {
+                try Favourites.setExcluded(controller.autoExcluded[alias] ?? [], forHost: alias, in: self.favouritesURL)
+            }
             reloadFavourites()
         }
     }

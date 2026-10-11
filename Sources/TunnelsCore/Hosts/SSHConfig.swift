@@ -1,5 +1,5 @@
-import Foundation
 import Darwin
+import Foundation
 
 /// Reads Host aliases out of ~/.ssh/config. Nothing else is parsed: ssh
 /// resolves the alias itself when the master starts.

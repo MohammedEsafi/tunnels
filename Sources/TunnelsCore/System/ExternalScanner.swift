@@ -20,9 +20,10 @@ public enum ExternalScanner {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             let columns = trimmed.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
             guard columns.count == 3,
-                  let pid = Int32(columns[0]),
-                  let uid = UInt32(columns[1]),
-                  uid == currentUID else { continue }
+                let pid = Int32(columns[0]),
+                let uid = UInt32(columns[1]),
+                uid == currentUID
+            else { continue }
             let command = String(columns[2])
             found.append(contentsOf: forwards(inCommand: command, pid: pid))
         }
@@ -144,7 +145,8 @@ public enum ExternalScanner {
     /// directory) that are no longer children of anything of ours. A crash or
     /// a force quit leaves them behind, still holding their local ports.
     public static func staleMasters(runner: any ProcessRunning, socketDirectory: URL, currentUID: uid_t = getuid()) async -> [Int32] {
-        guard let result = try? await runner.run("/bin/ps", arguments: ["-axo", "pid=,uid=,ppid=,command="], timeout: 10), result.succeeded else {
+        guard let result = try? await runner.run("/bin/ps", arguments: ["-axo", "pid=,uid=,ppid=,command="], timeout: 10), result.succeeded
+        else {
             return []
         }
         return staleMasters(in: result.stdout, socketDirectory: socketDirectory, currentUID: currentUID, ownPID: getpid())
@@ -156,9 +158,10 @@ public enum ExternalScanner {
         for line in output.split(separator: "\n") {
             let columns = line.trimmingCharacters(in: .whitespaces).split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
             guard columns.count == 4,
-                  let pid = Int32(columns[0]),
-                  let uid = UInt32(columns[1]), uid == currentUID,
-                  let ppid = Int32(columns[2]) else { continue }
+                let pid = Int32(columns[0]),
+                let uid = UInt32(columns[1]), uid == currentUID,
+                let ppid = Int32(columns[2])
+            else { continue }
             let command = String(columns[3])
             guard command.contains(" -N -M"), command.contains(marker), ppid != ownPID else { continue }
             found.append(pid)

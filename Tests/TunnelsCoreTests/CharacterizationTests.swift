@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import TunnelsCore
 
 /// Behaviour pinned before the Phase 4 refactors: these describe what the
@@ -63,7 +64,8 @@ final class ControllerLifecycleTests: XCTestCase {
     func testScanLeavesPinnedRemotePortsAlone() async {
         await controller.setForward(id: controller.forwards[0].id, on: true)
         runner.script = { args in
-            args.contains("--") ? ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:3000 0.0.0.0:*") : nil
+            args.contains("--")
+                ? ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:3000 0.0.0.0:*") : nil
         }
         controller.enableAutoHost("prod-db-01")
         await waitUntil { self.controller.forwards(on: "prod-db-01").count == 3 }
@@ -112,16 +114,23 @@ final class ControllerLifecycleTests: XCTestCase {
     }
 
     func testADiscoveredPortServedLocallyIsMovedToTheOffset() async {
-        runner.script = { args in args.contains("--") ? ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:3000 0.0.0.0:*") : nil }
-        controller.localPortProbe = { $0 == 5432 }   // a local database already answers on 5432
+        runner.script = { args in
+            args.contains("--")
+                ? ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:3000 0.0.0.0:*") : nil
+        }
+        controller.localPortProbe = { $0 == 5432 }  // a local database already answers on 5432
         controller.enableAutoHost("gpu-box")
-        await waitUntil { self.controller.forwards(on: "gpu-box").count == 2 && self.controller.forwards(on: "gpu-box").allSatisfy { $0.state == .active } }
+        await waitUntil {
+            self.controller.forwards(on: "gpu-box").count == 2 && self.controller.forwards(on: "gpu-box").allSatisfy { $0.state == .active }
+        }
 
         let specs = controller.forwards(on: "gpu-box").map(\.spec).sorted { $0.remotePort < $1.remotePort }
-        XCTAssertEqual(specs, [
-            ForwardSpec(machine: "gpu-box", localPort: 13000, remotePort: 3000),
-            ForwardSpec(machine: "gpu-box", localPort: 15432, remotePort: 5432),
-        ], "the whole machine moves to the offset; 5432 is never bound beside the local service")
+        XCTAssertEqual(
+            specs,
+            [
+                ForwardSpec(machine: "gpu-box", localPort: 13000, remotePort: 3000),
+                ForwardSpec(machine: "gpu-box", localPort: 15432, remotePort: 5432),
+            ], "the whole machine moves to the offset; 5432 is never bound beside the local service")
         XCTAssertFalse(runner.calls(containing: "forward").contains { $0.arguments.contains("127.0.0.1:5432:localhost:5432") })
     }
 
@@ -257,17 +266,18 @@ final class FavouritesEdgeCaseTests: XCTestCase {
     }
 
     func testHostAndFavouriteBlocksWithTheSameNameAreEditedIndependently() throws {
-        let url = file("""
-        [[host]]
-        name = "box"
-        all_ports = true
+        let url = file(
+            """
+            [[host]]
+            name = "box"
+            all_ports = true
 
-        [[favourite]]
-        name = "box"
-        host = "box"
-        port = 80
+            [[favourite]]
+            name = "box"
+            host = "box"
+            port = 80
 
-        """)
+            """)
         XCTAssertTrue(try Favourites.setExcluded([1, 2], forHost: "box", in: url))
         XCTAssertTrue(try Favourites.setOffset(10000, forHost: "box", in: url))
         XCTAssertTrue(try Favourites.remove(ForwardSpec(machine: "box", localPort: 80), from: url))
@@ -279,18 +289,19 @@ final class FavouritesEdgeCaseTests: XCTestCase {
     }
 
     func testParseHostsEdgeCases() throws {
-        let hosts = try Favourites.parseHosts("""
-        [[host]]
-        name = "on"
-        exclude = [8080, "x", 9090]
+        let hosts = try Favourites.parseHosts(
+            """
+            [[host]]
+            name = "on"
+            exclude = [8080, "x", 9090]
 
-        [[host]]
-        name = "off"
-        all_ports = false
+            [[host]]
+            name = "off"
+            all_ports = false
 
-        [[host]]
-        name = "  "
-        """)
+            [[host]]
+            name = "  "
+            """)
         XCTAssertEqual(hosts, [AutoHost(name: "on", excluded: [8080, 9090], offset: nil)])
     }
 
@@ -303,13 +314,14 @@ final class FavouritesEdgeCaseTests: XCTestCase {
 
 final class MiniTOMLEdgeCaseTests: XCTestCase {
     func testEscapesNegativeNumbersAndDuplicateKeys() throws {
-        let root = try MiniTOML.parse("""
-        s = "tab\\there \\"q\\" back\\\\slash"
-        n = -5
-        dup = 1
-        dup = 2
-        arr = ["a # not a comment", 'b']   # real comment
-        """)
+        let root = try MiniTOML.parse(
+            """
+            s = "tab\\there \\"q\\" back\\\\slash"
+            n = -5
+            dup = 1
+            dup = 2
+            arr = ["a # not a comment", 'b']   # real comment
+            """)
         XCTAssertEqual(root["s"]?.string, "tab\there \"q\" back\\slash")
         XCTAssertEqual(root["n"]?.integer, -5)
         XCTAssertEqual(root["dup"]?.integer, 2, "last value wins")
@@ -345,13 +357,14 @@ final class SSHConfigEdgeCaseTests: XCTestCase {
 final class ExternalScannerEdgeCaseTests: XCTestCase {
     func testAttachedOptionValuesAndSchemeTargets() {
         let ps = """
-          1   501 ssh -p2222 -L 8080:localhost:80 ssh://user@box:2222
-          2   501 ssh -L 9090:localhost:90 10.0.0.5
-          3   501 ssh -L [::1]:7070:localhost:70 box
-        """
+              1   501 ssh -p2222 -L 8080:localhost:80 ssh://user@box:2222
+              2   501 ssh -L 9090:localhost:90 10.0.0.5
+              3   501 ssh -L [::1]:7070:localhost:70 box
+            """
         let found = ExternalScanner.parse(ps, currentUID: 501)
         XCTAssertEqual(found.map(\.pid), [1, 2])
-        XCTAssertEqual(found[0].spec, ForwardSpec(machine: "box:2222", localPort: 8080, remotePort: 80), "today the port stays glued to the alias")
+        XCTAssertEqual(
+            found[0].spec, ForwardSpec(machine: "box:2222", localPort: 8080, remotePort: 80), "today the port stays glued to the alias")
         XCTAssertEqual(found[1].spec.machine, "?", "today an IP target is not recognised as a host")
     }
 }
@@ -381,7 +394,9 @@ final class LocalPortsTests: XCTestCase {
             address.sin_addr.s_addr = inet_addr(host)
             var length = socklen_t(MemoryLayout<sockaddr_in>.size)
             let bound = withUnsafeMutablePointer(to: &address) { pointer in
-                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(listener, $0, length) == 0 && getsockname(listener, $0, &length) == 0 }
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    Darwin.bind(listener, $0, length) == 0 && getsockname(listener, $0, &length) == 0
+                }
             }
             XCTAssertTrue(bound)
             XCTAssertEqual(listen(listener, 1), 0)

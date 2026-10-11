@@ -76,7 +76,8 @@ final class AppModel {
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Tunnels")
-        let sockets = ProcessInfo.processInfo.environment["TUNNELS_SOCKET_DIR"].map { URL(fileURLWithPath: $0) }
+        let sockets =
+            ProcessInfo.processInfo.environment["TUNNELS_SOCKET_DIR"].map { URL(fileURLWithPath: $0) }
             ?? support.appendingPathComponent("sockets")
         socketDirectory = sockets
         let configOverride = ProcessInfo.processInfo.environment["TUNNELS_SSH_CONFIG"].flatMap { $0.isEmpty ? nil : $0 }
@@ -101,7 +102,9 @@ final class AppModel {
         }
         controller.onForwardMoved = { [weak self] old, new in
             guard let self else { return }
-            editFavourites("changeLocalPort") { try Favourites.changeLocalPort(old, to: new.localPort, movedByApp: new.localPort != new.remotePort, in: self.favouritesURL) }
+            editFavourites("changeLocalPort") {
+                try Favourites.changeLocalPort(old, to: new.localPort, movedByApp: new.localPort != new.remotePort, in: self.favouritesURL)
+            }
             reloadFavourites()
         }
         reconnector.onReconnected = { [weak self] alias, elapsed in

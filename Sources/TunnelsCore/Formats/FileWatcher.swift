@@ -25,7 +25,8 @@ public final class FileWatcher {
         let directory = url.deletingLastPathComponent()
         let descriptor = open(directory.path, O_EVTONLY)
         guard descriptor >= 0 else { return }
-        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: [.write, .rename, .delete], queue: .main)
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: descriptor, eventMask: [.write, .rename, .delete], queue: .main)
         source.setEventHandler { [weak self] in
             self?.watchFile()
             self?.schedule()
@@ -40,7 +41,8 @@ public final class FileWatcher {
         fileSource = nil
         let descriptor = open(url.path, O_EVTONLY)
         guard descriptor >= 0 else { return }
-        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: [.write, .extend, .rename, .delete, .attrib], queue: .main)
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: descriptor, eventMask: [.write, .extend, .rename, .delete, .attrib], queue: .main)
         source.setEventHandler { [weak self] in
             self?.schedule()
         }

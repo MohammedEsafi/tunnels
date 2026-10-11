@@ -180,8 +180,8 @@ public enum MiniTOML {
     }
 }
 
-private extension TOMLValue {
-    var arrayItems: [TOMLValue]? {
+extension TOMLValue {
+    fileprivate var arrayItems: [TOMLValue]? {
         if case .array(let items) = self { return items } else { return nil }
     }
 }

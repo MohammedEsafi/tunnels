@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import TunnelsCore
 
 /// Defects found in the Phase 1 audit, each pinned by a test that fails today.
@@ -159,12 +160,12 @@ final class KnownDefectsTests: XCTestCase {
     // P1-6
     func testNetstatFallbackIgnoresUDPAndNonListeningSockets() {
         let netstat = """
-        Active Internet connections (including servers)
-        Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
-        tcp4       0      0  127.0.0.1.5432         *.*                    LISTEN
-        tcp4       0      0  10.0.0.5.3000          10.0.0.9.51234         SYN_SENT
-        udp4       0      0  *.5353                 *.*
-        """
+            Active Internet connections (including servers)
+            Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
+            tcp4       0      0  127.0.0.1.5432         *.*                    LISTEN
+            tcp4       0      0  10.0.0.5.3000          10.0.0.9.51234         SYN_SENT
+            udp4       0      0  *.5353                 *.*
+            """
         XCTAssertEqual(PortDiscovery.parse(netstat), [5432])
     }
 }

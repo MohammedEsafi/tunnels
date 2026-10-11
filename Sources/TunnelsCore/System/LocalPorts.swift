@@ -22,7 +22,9 @@ public enum LocalPorts {
         // No SO_REUSEADDR: the wildcard bind then fails against a listener on
         // any address for this port.
         let result = withUnsafePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(socketDescriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                bind(socketDescriptor, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
         }
         return result != 0 && errno == EADDRINUSE
     }

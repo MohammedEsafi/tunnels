@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import TunnelsCore
 
 @MainActor
@@ -412,7 +413,10 @@ final class SSHErrorTextTests: XCTestCase {
         XCTAssertEqual(SSHErrorText.humanize("x@y: Permission denied (publickey,password)."), "No usable key in the agent. Run ssh-add.")
         XCTAssertEqual(SSHErrorText.humanize("ssh: Could not resolve hostname nope: nodename nor servname provided"), "Unknown host")
         XCTAssertEqual(SSHErrorText.humanize("bind [127.0.0.1]:5432: Address already in use"), "Local port in use")
-        XCTAssertEqual(SSHErrorText.humanize("mux_client_forward: forwarding request failed: Port forwarding failed\nmuxclient: master forward request failed"), "Local port in use")
+        XCTAssertEqual(
+            SSHErrorText.humanize(
+                "mux_client_forward: forwarding request failed: Port forwarding failed\nmuxclient: master forward request failed"),
+            "Local port in use")
         XCTAssertEqual(SSHErrorText.humanize("ssh: connect to host 10.0.0.9 port 22: Connection refused"), "Host unreachable")
         XCTAssertEqual(SSHErrorText.humanize("something odd\nssh: last line here"), "last line here")
     }

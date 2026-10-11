@@ -1,5 +1,5 @@
-import Foundation
 import CryptoKit
+import Foundation
 
 /// One ControlMaster connection to one Host alias. Forwards are added and
 /// cancelled on this connection without reconnecting.
@@ -92,7 +92,9 @@ public actor SSHMaster {
 
     /// Run a command on the machine over the existing connection.
     public func run(_ command: String) async throws -> String {
-        let result = try await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-o", "BatchMode=yes", alias, "--", command], timeout: 15)
+        let result = try await runner.run(
+            options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-o", "BatchMode=yes", alias, "--", command],
+            timeout: 15)
         guard result.succeeded else {
             throw SSHError.commandFailed(result.stderr.isEmpty ? "exit \(result.exitCode)" : result.stderr)
         }
@@ -100,7 +102,10 @@ public actor SSHMaster {
     }
 
     public func check() async -> Bool {
-        guard let result = try? await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-O", "check", alias], timeout: 10) else {
+        guard
+            let result = try? await runner.run(
+                options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-O", "check", alias], timeout: 10)
+        else {
             return false
         }
         return result.succeeded
@@ -108,7 +113,8 @@ public actor SSHMaster {
 
     /// Ask the master to exit, then make sure it is gone.
     public func stop() async {
-        _ = try? await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-O", "exit", alias], timeout: 5)
+        _ = try? await runner.run(
+            options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-O", "exit", alias], timeout: 5)
         if let handle, handle.isRunning {
             try? await Task.sleep(nanoseconds: 500_000_000)
             if handle.isRunning { handle.terminate() }
@@ -136,7 +142,8 @@ public actor SSHMaster {
     }
 
     private func control(_ extra: [String]) async throws {
-        let result = try await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + extra + [alias], timeout: 15)
+        let result = try await runner.run(
+            options.sshPath, arguments: ["-S", socketPath] + options.configArguments + extra + [alias], timeout: 15)
         if !result.succeeded {
             let text = result.stderr.isEmpty ? result.stdout : result.stderr
             throw SSHError.commandFailed(text.isEmpty ? "ssh exited with status \(result.exitCode)" : text)

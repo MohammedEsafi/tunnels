@@ -1,26 +1,27 @@
 import XCTest
+
 @testable import TunnelsCore
 
 final class MiniTOMLTests: XCTestCase {
     func testArrayOfTablesAndScalars() throws {
         let text = """
-        title = "Tunnels" # trailing comment
-        count = 1_000
-        ratio = 0.5
-        on = true
-        ports = [1, 2, 3]
+            title = "Tunnels" # trailing comment
+            count = 1_000
+            ratio = 0.5
+            on = true
+            ports = [1, 2, 3]
 
-        [settings]
-        login = false
+            [settings]
+            login = false
 
-        [[favourite]]
-        name = "postgres"
-        port = 5432
+            [[favourite]]
+            name = "postgres"
+            port = 5432
 
-        [[favourite]]
-        name = 'mail # not a comment'
-        port = 1025
-        """
+            [[favourite]]
+            name = 'mail # not a comment'
+            port = 1025
+            """
         let root = try MiniTOML.parse(text)
         XCTAssertEqual(root["title"], .string("Tunnels"))
         XCTAssertEqual(root["count"], .integer(1000))
@@ -48,17 +49,17 @@ final class MiniTOMLTests: XCTestCase {
 final class FavouritesTests: XCTestCase {
     func testParsesFavouritesWithDefaults() throws {
         let text = """
-        [[favourite]]
-        name = "postgres"
-        host = "prod-db-01"
-        port = 5432
+            [[favourite]]
+            name = "postgres"
+            host = "prod-db-01"
+            port = 5432
 
-        [[favourite]]
-        host = "staging"
-        port = 15432
-        remote_port = 5432
-        remote_host = "db.internal"
-        """
+            [[favourite]]
+            host = "staging"
+            port = 15432
+            remote_port = 5432
+            remote_host = "db.internal"
+            """
         let favourites = try Favourites.parse(text)
         XCTAssertEqual(favourites.count, 2)
         XCTAssertEqual(favourites[0].name, "postgres")
@@ -69,22 +70,22 @@ final class FavouritesTests: XCTestCase {
 
     func testValidationCollectsEveryProblem() {
         let text = """
-        [[favourite]]
-        name = "no host"
-        port = 1
+            [[favourite]]
+            name = "no host"
+            port = 1
 
-        [[favourite]]
-        host = "a"
-        port = 70000
+            [[favourite]]
+            host = "a"
+            port = 70000
 
-        [[favourite]]
-        host = "b"
-        port = 80
+            [[favourite]]
+            host = "b"
+            port = 80
 
-        [[favourite]]
-        host = "b"
-        port = 80
-        """
+            [[favourite]]
+            host = "b"
+            port = 80
+            """
         XCTAssertThrowsError(try Favourites.parse(text)) { error in
             let problems = (error as? FavouritesError)?.problems ?? []
             XCTAssertEqual(problems.count, 3)
@@ -116,7 +117,8 @@ final class FavouritesTests: XCTestCase {
         x = 1
         """.write(to: url, atomically: true, encoding: .utf8)
 
-        let web = Favourite(name: "web", spec: ForwardSpec(machine: "staging", localPort: 28080, remoteHost: "db.internal", remotePort: 8080))
+        let web = Favourite(
+            name: "web", spec: ForwardSpec(machine: "staging", localPort: 28080, remoteHost: "db.internal", remotePort: 8080))
         try Favourites.add(web, to: url)
         var loaded = try Favourites.load(from: url)
         XCTAssertEqual(loaded.map(\.name), ["postgres", "web"])
@@ -222,9 +224,13 @@ final class FavouritesTests: XCTestCase {
         XCTAssertFalse(try Favourites.changeLocalPort(ForwardSpec(machine: "nope", localPort: 1), to: 2, in: url))
 
         // The app's own moves are flagged, and the flag goes away when it moves back.
-        XCTAssertTrue(try Favourites.changeLocalPort(ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8080), to: 28080, movedByApp: true, in: url))
+        XCTAssertTrue(
+            try Favourites.changeLocalPort(
+                ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8080), to: 28080, movedByApp: true, in: url))
         XCTAssertTrue(try Favourites.load(from: url)[0].movedByApp)
-        XCTAssertTrue(try Favourites.changeLocalPort(ForwardSpec(machine: "box-b", localPort: 28080, remotePort: 8080), to: 8080, movedByApp: false, in: url))
+        XCTAssertTrue(
+            try Favourites.changeLocalPort(
+                ForwardSpec(machine: "box-b", localPort: 28080, remotePort: 8080), to: 8080, movedByApp: false, in: url))
         let back = try Favourites.load(from: url)[0]
         XCTAssertFalse(back.movedByApp)
         XCTAssertEqual(back.spec, ForwardSpec(machine: "box-b", localPort: 8080))
@@ -246,7 +252,9 @@ final class FavouritesTests: XCTestCase {
         XCTAssertTrue(try Favourites.changePorts(ForwardSpec(machine: "box-b", localPort: 8080), local: 18080, remote: 8081, in: url))
         XCTAssertEqual(try Favourites.load(from: url)[0].spec, ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8081))
         // Back to equal ports; remote_port goes away again.
-        XCTAssertTrue(try Favourites.changePorts(ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8081), local: 9090, remote: 9090, in: url))
+        XCTAssertTrue(
+            try Favourites.changePorts(
+                ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8081), local: 9090, remote: 9090, in: url))
         XCTAssertEqual(try Favourites.load(from: url)[0].spec, ForwardSpec(machine: "box-b", localPort: 9090))
         XCTAssertFalse(try String(contentsOf: url, encoding: .utf8).contains("remote_port"))
     }

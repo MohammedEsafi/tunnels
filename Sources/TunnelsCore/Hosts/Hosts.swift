@@ -36,16 +36,19 @@ public enum TailscaleHosts {
 
     public static func fetch(runner: any ProcessRunning) async -> [HostEntry] {
         guard let path = executable(),
-              let result = try? await runner.run(path, arguments: ["status", "--json"], timeout: 5),
-              result.succeeded else { return [] }
+            let result = try? await runner.run(path, arguments: ["status", "--json"], timeout: 5),
+            result.succeeded
+        else { return [] }
         return parse(result.stdout)
     }
 
     public static func parse(_ json: String) -> [HostEntry] {
         guard let data = json.data(using: .utf8),
-              let status = try? JSONDecoder().decode(Status.self, from: data) else { return [] }
+            let status = try? JSONDecoder().decode(Status.self, from: data)
+        else { return [] }
         let peers = status.peer?.values ?? [:].values
-        return peers
+        return
+            peers
             .compactMap { peer -> HostEntry? in
                 let name = peer.hostName.lowercased()
                 guard !name.isEmpty else { return nil }
