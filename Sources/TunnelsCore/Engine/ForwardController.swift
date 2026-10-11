@@ -12,7 +12,7 @@ public final class ForwardController {
     public internal(set) var logs: [String: [String]] = [:]
 
     let runner: any ProcessRunning
-    let socketDirectory: URL
+    let options: SSHOptions
     var masters: [String: SSHMaster] = [:]
     var startingMasters: [String: Task<SSHMaster, Error>] = [:]
 
@@ -43,9 +43,9 @@ public final class ForwardController {
     var discoveryLoops: [String: Task<Void, Never>] = [:]
     var scanning: Set<String> = []
 
-    public init(runner: any ProcessRunning, socketDirectory: URL) {
+    public init(runner: any ProcessRunning, options: SSHOptions) {
         self.runner = runner
-        self.socketDirectory = socketDirectory
+        self.options = options
     }
 
     // MARK: Reading state
@@ -334,10 +334,10 @@ public final class ForwardController {
         }
         machineStates[alias] = .connecting
         appendLog(alias, "connecting")
-        let task = Task<SSHMaster, Error> { [runner, socketDirectory] in
+        let task = Task<SSHMaster, Error> { [runner, options] in
             let master = SSHMaster(
                 alias: alias,
-                socketDirectory: socketDirectory,
+                options: options,
                 runner: runner,
                 onOutput: { line in
                     Task { @MainActor in self.appendLog(alias, line) }

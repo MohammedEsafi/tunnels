@@ -15,7 +15,7 @@ final class KnownDefectsTests: XCTestCase {
     override func setUp() async throws {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("defects")
-        controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller = ForwardController(runner: runner, options: SSHOptions(socketDirectory: socketDir))
         controller.localPortProbe = { _ in false }
         controller.discoveryInterval = 3600
     }
