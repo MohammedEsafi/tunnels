@@ -13,6 +13,7 @@ final class ReconnectorTests: XCTestCase {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("recon")
         controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller.localPortProbe = { _ in false }
         controller.setFavourites([(postgres, "postgres")])
         reconnector = Reconnector(controller: controller)
         reconnector.delays = [0.05]

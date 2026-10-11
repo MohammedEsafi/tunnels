@@ -96,8 +96,10 @@ Problems in the file are shown at the top of the popover with an Open button.
   The app then watches that machine over the same connection, every five
   seconds, and forwards every TCP listener it finds (1024 up to 32767, below
   the ephemeral range) to the same local port, adding and removing forwards
-  as services come and go. The host shows a small layers glyph after its name; its port rows
-  have no name. Switch a port off (or ×) to say "not this one"; that is kept
+  as services come and go. A port that some program on this Mac already
+  serves is never bound: the machine moves to an offset instead (see
+  below), so a remote machine cannot take over a local service. The host
+  shows a small layers glyph after its name; its port rows have no name. Switch a port off (or ×) to say "not this one"; that is kept
   across reconnects and relaunches. Switching the host off stops watching;
   switching it on again asks whether you want all ports or only the pinned
   ones. Answering "All ports" forgets the "not this one" choices.

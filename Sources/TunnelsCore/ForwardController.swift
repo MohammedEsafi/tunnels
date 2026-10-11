@@ -36,6 +36,9 @@ public final class ForwardController {
     public var onForwardMoved: (@MainActor (ForwardSpec, ForwardSpec) -> Void)?
     /// How often an auto host is scanned.
     public var discoveryInterval: TimeInterval = 5
+    /// Whether a local port is already served by something on this Mac.
+    /// Replaceable so tests do not depend on the machine they run on.
+    public var localPortProbe: (Int) -> Bool = LocalPorts.isTaken
     private var discoveryLoops: [String: Task<Void, Never>] = [:]
     private var scanning: Set<String> = []
 
@@ -270,8 +273,9 @@ public final class ForwardController {
     }
 
     /// Something of ours already listens there, so do not even try the plain number.
+    /// Taken by one of our own forwards, or by any other program on this Mac.
     private func isLocalPortTaken(_ port: Int) -> Bool {
-        forwards.contains { $0.spec.localPort == port && ($0.state == .active || $0.state == .noService) }
+        forwards.contains { $0.spec.localPort == port && ($0.state == .active || $0.state == .noService) } || localPortProbe(port)
     }
 
     private func nextOffset() -> Int {

@@ -16,6 +16,7 @@ final class KnownDefectsTests: XCTestCase {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("defects")
         controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller.localPortProbe = { _ in false }
         controller.discoveryInterval = 3600
     }
 
