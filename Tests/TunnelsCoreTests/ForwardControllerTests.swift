@@ -14,6 +14,7 @@ final class ForwardControllerTests: XCTestCase {
         runner = FakeRunner()
         socketDir = FileManager.default.temporaryDirectory.appendingPathComponent("tunnels-tests-\(UUID().uuidString)")
         controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller.localPortProbe = { _ in false }
         controller.setFavourites([(postgres, "postgres"), (redis, "redis")])
     }
 

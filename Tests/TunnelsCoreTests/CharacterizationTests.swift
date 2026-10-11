@@ -15,6 +15,7 @@ final class ControllerLifecycleTests: XCTestCase {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("lifecycle")
         controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller.localPortProbe = { _ in false }
         controller.discoveryInterval = 3600
         controller.setFavourites([Favourite(name: "postgres", spec: postgres), Favourite(name: "redis", spec: redis)])
     }
@@ -97,6 +98,20 @@ final class ControllerLifecycleTests: XCTestCase {
         XCTAssertEqual(runner.calls(containing: "cancel").count, 1)
     }
 
+    func testADiscoveredPortServedLocallyIsMovedToTheOffset() async {
+        runner.script = { args in args.contains("--") ? ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:3000 0.0.0.0:*") : nil }
+        controller.localPortProbe = { $0 == 5432 }   // a local database already answers on 5432
+        controller.enableAutoHost("gpu-box")
+        await waitUntil { self.controller.forwards(on: "gpu-box").count == 2 && self.controller.forwards(on: "gpu-box").allSatisfy { $0.state == .active } }
+
+        let specs = controller.forwards(on: "gpu-box").map(\.spec).sorted { $0.remotePort < $1.remotePort }
+        XCTAssertEqual(specs, [
+            ForwardSpec(machine: "gpu-box", localPort: 13000, remotePort: 3000),
+            ForwardSpec(machine: "gpu-box", localPort: 15432, remotePort: 5432),
+        ], "the whole machine moves to the offset; 5432 is never bound beside the local service")
+        XCTAssertFalse(runner.calls(containing: "forward").contains { $0.arguments.contains("127.0.0.1:5432:localhost:5432") })
+    }
+
     func testPersistedStateCaptureSkipsDiscoveredRows() async {
         await controller.setForward(id: controller.forwards[0].id, on: true)
         await controller.addAdHoc(ForwardSpec(machine: "box-b", localPort: 8080), name: "web")
@@ -124,6 +139,7 @@ final class ReconnectorScheduleTests: XCTestCase {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("schedule")
         controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller.localPortProbe = { _ in false }
         controller.setFavourites([Favourite(name: "postgres", spec: postgres)])
         reconnector = Reconnector(controller: controller)
         reconnector.delays = [0.05]
@@ -339,5 +355,35 @@ final class SSHErrorTextMoreTests: XCTestCase {
         XCTAssertEqual(SSHErrorText.short("Host key verification failed"), "Host key failed")
         XCTAssertEqual(SSHErrorText.short("Connection is gone"), "Disconnected")
         XCTAssertEqual(SSHErrorText.short("ssh exited with status 255"), "ssh exited")
+    }
+}
+
+final class LocalPortsTests: XCTestCase {
+    func testDetectsAListenerOnAnyAddress() throws {
+        for host in ["0.0.0.0", "127.0.0.1"] {
+            let listener = socket(AF_INET, SOCK_STREAM, 0)
+            defer { close(listener) }
+            var address = sockaddr_in()
+            address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+            address.sin_family = sa_family_t(AF_INET)
+            address.sin_port = 0
+            address.sin_addr.s_addr = inet_addr(host)
+            var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+            let bound = withUnsafeMutablePointer(to: &address) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(listener, $0, length) == 0 && getsockname(listener, $0, &length) == 0 }
+            }
+            XCTAssertTrue(bound)
+            XCTAssertEqual(listen(listener, 1), 0)
+            let port = Int(UInt16(bigEndian: address.sin_port))
+
+            XCTAssertTrue(LocalPorts.isTaken(port), "listener on \(host):\(port)")
+            close(listener)
+            XCTAssertFalse(LocalPorts.isTaken(port), "after closing \(host):\(port)")
+        }
+    }
+
+    func testOutOfRangeIsNotTaken() {
+        XCTAssertFalse(LocalPorts.isTaken(0))
+        XCTAssertFalse(LocalPorts.isTaken(70000))
     }
 }
