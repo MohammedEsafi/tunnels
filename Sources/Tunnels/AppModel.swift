@@ -115,8 +115,8 @@ final class AppModel {
             if forward.isDiscovered {
                 // Pin it on the new number; discovery then leaves this remote port alone.
                 await controller.excludePort(forward.spec.remotePort, on: forward.spec.machine)
-                try? Favourites.setExcluded(controller.autoExcluded[forward.spec.machine] ?? [], forHost: forward.spec.machine, in: favouritesURL)
-                try? Favourites.add(Favourite(name: forward.name, spec: moved), to: favouritesURL)
+                editFavourites("setExcluded") { try Favourites.setExcluded(controller.autoExcluded[forward.spec.machine] ?? [], forHost: forward.spec.machine, in: self.favouritesURL) }
+                editFavourites("add") { try Favourites.add(Favourite(name: forward.name, spec: moved), to: self.favouritesURL) }
                 reloadFavourites()
                 if wantOn, let pinned = controller.forwards.first(where: { $0.spec == moved }) {
                     await controller.setForward(id: pinned.id, on: true)
@@ -124,7 +124,7 @@ final class AppModel {
                 return
             }
             await controller.remove(id: forward.id)
-            try? Favourites.changePorts(forward.spec, local: local, remote: remote, in: favouritesURL)
+            editFavourites("changePorts") { try Favourites.changePorts(forward.spec, local: local, remote: remote, in: self.favouritesURL) }
             reloadFavourites()
             if wantOn, let pinned = controller.forwards.first(where: { $0.spec == moved }) {
                 await controller.setForward(id: pinned.id, on: true)
@@ -135,7 +135,7 @@ final class AppModel {
     /// A discovered port becomes an ordinary pinned forward with a name.
     func pinDiscovered(_ forward: Forward, name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        try? Favourites.add(Favourite(name: trimmed.isEmpty ? forward.name : trimmed, spec: forward.spec), to: favouritesURL)
+        editFavourites("add") { try Favourites.add(Favourite(name: trimmed.isEmpty ? forward.name : trimmed, spec: forward.spec), to: self.favouritesURL) }
         reloadFavourites()
     }
 
@@ -160,9 +160,9 @@ final class AppModel {
     func forgetMachine(_ alias: String) {
         reconnector.cancel(alias)
         for favourite in favourites where favourite.spec.machine == alias {
-            try? Favourites.remove(favourite.spec, from: favouritesURL)
+            editFavourites("remove") { try Favourites.remove(favourite.spec, from: self.favouritesURL) }
         }
-        try? Favourites.removeHost(alias, from: favouritesURL)
+        editFavourites("removeHost") { try Favourites.removeHost(alias, from: self.favouritesURL) }
         Task {
             await controller.disableAutoHost(alias)
             await controller.setMachine(alias: alias, on: false)
@@ -201,7 +201,7 @@ final class AppModel {
         }
         controller.onOffsetAssigned = { [weak self] alias, offset in
             guard let self else { return }
-            try? Favourites.setOffset(offset, forHost: alias, in: favouritesURL)
+            editFavourites("setOffset") { try Favourites.setOffset(offset, forHost: alias, in: self.favouritesURL) }
             reloadFavourites()
             guard notifyOnGiveUp else { return }
             Notifier.post(
@@ -211,7 +211,7 @@ final class AppModel {
         }
         controller.onForwardMoved = { [weak self] old, new in
             guard let self else { return }
-            try? Favourites.changeLocalPort(old, to: new.localPort, movedByApp: new.localPort != new.remotePort, in: favouritesURL)
+            editFavourites("changeLocalPort") { try Favourites.changeLocalPort(old, to: new.localPort, movedByApp: new.localPort != new.remotePort, in: self.favouritesURL) }
             reloadFavourites()
         }
         reconnector.onReconnected = { [weak self] alias, elapsed in
@@ -313,7 +313,7 @@ final class AppModel {
             if !favourites.contains(where: { $0.spec == spec }) {
                 let name = spec.remoteHost == "localhost" || spec.remoteHost == "127.0.0.1"
                     ? String(spec.remotePort) : "\(spec.remoteHost):\(spec.remotePort)"
-                try? Favourites.add(Favourite(name: name, spec: spec), to: favouritesURL)
+                editFavourites("add") { try Favourites.add(Favourite(name: name, spec: spec), to: self.favouritesURL) }
                 reloadFavourites()
             }
         }
@@ -350,7 +350,7 @@ final class AppModel {
     /// The × on a row: close it and forget it.
     func removeForward(_ forward: Forward) {
         reconnector.cancel(forward.spec.machine)
-        try? Favourites.remove(forward.spec, from: favouritesURL)
+        editFavourites("remove") { try Favourites.remove(forward.spec, from: self.favouritesURL) }
         reloadFavourites()
         Task { await controller.remove(id: forward.id) }
     }
@@ -420,10 +420,10 @@ final class AppModel {
     /// reconnects and relaunches otherwise.
     func enableAllPorts(_ alias: String) {
         if !isAutoHost(alias) {
-            try? Favourites.addHost(AutoHost(name: alias), to: favouritesURL)
+            editFavourites("addHost") { try Favourites.addHost(AutoHost(name: alias), to: self.favouritesURL) }
         } else {
-            try? Favourites.setExcluded([], forHost: alias, in: favouritesURL)
-            try? Favourites.setOffset(nil, forHost: alias, in: favouritesURL)
+            editFavourites("setExcluded") { try Favourites.setExcluded([], forHost: alias, in: self.favouritesURL) }
+            editFavourites("setOffset") { try Favourites.setOffset(nil, forHost: alias, in: self.favouritesURL) }
         }
         reloadFavourites()
         // A real restart: drop what discovery had, forget the offset, scan afresh.
@@ -452,9 +452,9 @@ final class AppModel {
         let pinnedAlready = Set(favourites.filter { $0.spec.machine == alias }.map(\.spec.localPort))
         let frozen = (controller.lastDiscovered[alias] ?? []).subtracting(pinnedAlready)
         for port in frozen.sorted() {
-            try? Favourites.add(Favourite(name: String(port), spec: ForwardSpec(machine: alias, localPort: port)), to: favouritesURL)
+            editFavourites("add") { try Favourites.add(Favourite(name: String(port), spec: ForwardSpec(machine: alias, localPort: port)), to: self.favouritesURL) }
         }
-        try? Favourites.removeHost(alias, from: favouritesURL)
+        editFavourites("removeHost") { try Favourites.removeHost(alias, from: self.favouritesURL) }
         reloadFavourites()
         Task {
             await controller.disableAutoHost(alias)
@@ -468,11 +468,23 @@ final class AppModel {
     func switchOn(_ alias: String) {
         if isAutoHost(alias) {
             let host = autoHosts.first { $0.name == alias }
-            try? Favourites.setOffset(nil, forHost: alias, in: favouritesURL)
+            editFavourites("setOffset") { try Favourites.setOffset(nil, forHost: alias, in: self.favouritesURL) }
             reloadFavourites()
             controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: nil)
         }
         Task { await controller.setMachine(alias: alias, on: true) }
+    }
+
+    /// Edits to the favourites file are best effort from the menu's point of
+    /// view: the in-memory state changes either way, and a failed write is logged.
+    @discardableResult
+    private func editFavourites<T>(_ action: String, _ edit: () throws -> T) -> T? {
+        do {
+            return try edit()
+        } catch {
+            DebugLog.log("favourites: \(action) failed: \(error)")
+            return nil
+        }
     }
 
     /// "Not this one" on a discovered row.
