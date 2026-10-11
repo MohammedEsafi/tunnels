@@ -220,6 +220,14 @@ final class FavouritesTests: XCTestCase {
         XCTAssertEqual(loaded[0].spec, ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8080))
         XCTAssertEqual(loaded[1].spec, ForwardSpec(machine: "box-b", localPort: 28081, remotePort: 8081))
         XCTAssertFalse(try Favourites.changeLocalPort(ForwardSpec(machine: "nope", localPort: 1), to: 2, in: url))
+
+        // The app's own moves are flagged, and the flag goes away when it moves back.
+        XCTAssertTrue(try Favourites.changeLocalPort(ForwardSpec(machine: "box-b", localPort: 18080, remotePort: 8080), to: 28080, movedByApp: true, in: url))
+        XCTAssertTrue(try Favourites.load(from: url)[0].movedByApp)
+        XCTAssertTrue(try Favourites.changeLocalPort(ForwardSpec(machine: "box-b", localPort: 28080, remotePort: 8080), to: 8080, movedByApp: false, in: url))
+        let back = try Favourites.load(from: url)[0]
+        XCTAssertFalse(back.movedByApp)
+        XCTAssertEqual(back.spec, ForwardSpec(machine: "box-b", localPort: 8080))
     }
 
     func testAddCreatesFileWithTemplate() throws {

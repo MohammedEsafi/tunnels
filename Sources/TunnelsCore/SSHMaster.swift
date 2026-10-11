@@ -233,6 +233,7 @@ public actor SSHMaster {
     private func handleExit(_ code: Int32) {
         exitCode = code
         handle = nil
+        record("[master process ended, status \(code)]")
         try? FileManager.default.removeItem(atPath: socketPath)
         onExit(code, lastOutput)
     }

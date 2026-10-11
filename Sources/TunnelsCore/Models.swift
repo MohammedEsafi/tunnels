@@ -65,14 +65,18 @@ public struct Forward: Identifiable, Hashable, Sendable {
     public var isFavourite: Bool
     /// Found by all-ports discovery; it exists while the remote listens.
     public var isDiscovered: Bool
+    /// The app moved this pinned forward off its plain number because it
+    /// was taken. Such a forward may go back to plain when retried by hand.
+    public var movedByApp: Bool
     public var desiredOn: Bool
     public var state: ForwardState
 
-    public init(spec: ForwardSpec, name: String, isFavourite: Bool, isDiscovered: Bool = false, desiredOn: Bool = false, state: ForwardState = .off) {
+    public init(spec: ForwardSpec, name: String, isFavourite: Bool, isDiscovered: Bool = false, movedByApp: Bool = false, desiredOn: Bool = false, state: ForwardState = .off) {
         self.spec = spec
         self.name = name
         self.isFavourite = isFavourite
         self.isDiscovered = isDiscovered
+        self.movedByApp = movedByApp
         self.desiredOn = desiredOn
         self.state = state
     }

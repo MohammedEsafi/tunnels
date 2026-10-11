@@ -104,8 +104,13 @@ Problems in the file are shown at the top of the popover with an Open button.
   connected first. One notification tells you the rule when it first
   happens. The offset is kept on the host's entry (`offset = 10000`) across
   reconnects and relaunches; answering "All ports" again is a fresh start and
-  clears it. Pinned forwards are never moved: a clash there stays red
-  because you asked for that number.
+  clears it. A pinned forward whose own number is taken moves the same way,
+  and the favourites file is rewritten (with `moved = true`) so it stays
+  there; a forward you gave a different local number yourself is left alone.
+  Switching a machine off and on by hand means "start from the best numbers
+  available": its offset is dropped and the forwards the app moved try their
+  plain number again, moving back only what is still taken. Automatic
+  reconnects and relaunches keep the numbers as they were.
 - **A forward with nothing behind it.** A pinned forward whose remote port has
   no listener shows an orange circle with the tooltip "Nothing listening on
   host:port". It is open and will work the moment something starts there;

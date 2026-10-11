@@ -211,6 +211,11 @@ final class AppModel {
                 body: "Some ports were taken, so \(alias) uses +\(offset). For example \(8080 + offset) is its 8080."
             )
         }
+        controller.onForwardMoved = { [weak self] old, new in
+            guard let self else { return }
+            try? Favourites.changeLocalPort(old, to: new.localPort, movedByApp: new.localPort != new.remotePort, in: favouritesURL)
+            reloadFavourites()
+        }
         reconnector.onReconnected = { [weak self] alias, elapsed in
             guard let self, notifyOnGiveUp else { return }
             let open = controller.forwards(on: alias).filter { $0.state == .active }.count
@@ -257,7 +262,7 @@ final class AppModel {
         } catch {
             favouritesProblems = [error.localizedDescription]
         }
-        controller.setFavourites(favourites.map { ($0.spec, $0.name) })
+        controller.setFavourites(favourites)
         DebugLog.log("favourites: \(favourites.count) from \(favouritesURL.path), problems: \(favouritesProblems), forwards: \(controller.forwards.count)")
     }
 

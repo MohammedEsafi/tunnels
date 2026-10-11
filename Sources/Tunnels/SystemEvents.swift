@@ -36,6 +36,7 @@ final class SystemEvents {
     }
 
     private func fire() {
+        DebugLog.log("system event: wake or network change")
         guard let handler else { return }
         Task { @MainActor in handler() }
     }
