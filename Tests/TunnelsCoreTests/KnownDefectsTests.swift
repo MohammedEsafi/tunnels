@@ -2,10 +2,9 @@ import XCTest
 
 @testable import TunnelsCore
 
-/// Defects found in the Phase 1 audit, each pinned by a test that fails today.
-/// `XCTExpectFailure` keeps the suite green until the fix lands; a fix then
-/// turns the expected failure into an unexpected pass, which removes the
-/// wrapper. Numbers refer to the audit report.
+/// Regression tests for the defects found in the Phase 1 audit and the Phase 5
+/// review, one per defect. Each was written to fail on the code of the time
+/// and passed once the fix landed. Numbers refer to the audit report.
 @MainActor
 final class KnownDefectsTests: XCTestCase {
     var runner: FakeRunner!
@@ -40,7 +39,8 @@ final class KnownDefectsTests: XCTestCase {
 
         await controller.setMachine(alias: "gpu-box", on: false)
         gate.open()
-        try? await Task.sleep(nanoseconds: 300_000_000)
+        await waitUntil { self.runner.completed(containing: "--").count == 1 }
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertEqual(controller.forwards(on: "gpu-box"), [])
         XCTAssertEqual(controller.machineState("gpu-box"), .disconnected)
@@ -71,7 +71,8 @@ final class KnownDefectsTests: XCTestCase {
 
         await controller.setForward(id: id, on: false)
         gate.open()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        await waitUntil { self.runner.completed(containing: "forward").count == 1 }
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertFalse(controller.forwards[0].desiredOn)
         XCTAssertEqual(controller.forwards[0].state, .off)
@@ -88,7 +89,7 @@ final class KnownDefectsTests: XCTestCase {
 
         await controller.setForward(id: id, on: false)
         runner.masterConnects = true
-        try? await Task.sleep(nanoseconds: 700_000_000)
+        await waitUntil { self.runner.calls(containing: "exit").count == 1 }
 
         XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)
         XCTAssertTrue(runner.runningMasters.isEmpty)
@@ -111,7 +112,8 @@ final class KnownDefectsTests: XCTestCase {
         let third = ForwardSpec(machine: "prod-db-01", localPort: 7777)
         await controller.addAdHoc(third)
         gate.open()
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        await waitUntil { self.runner.completed(containing: "127.0.0.1:5432:localhost:5432").count >= 1 }
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertTrue(controller.forwards.contains { $0.spec == third }, "\(controller.forwards.map(\.spec))")
     }
@@ -147,7 +149,6 @@ final class KnownDefectsTests: XCTestCase {
 
         XCTAssertEqual(controller.machineState("gpu-box"), .failed(reason: "Host unreachable"))
         XCTAssertEqual(runner.launches.count, 3, "the first try plus two attempts, then nothing")
-        try? await Task.sleep(nanoseconds: 100_000_000)
         await controller.scan("gpu-box")
         XCTAssertEqual(runner.launches.count, 3, "a failed machine is left to a manual retry")
     }

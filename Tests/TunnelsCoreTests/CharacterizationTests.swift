@@ -49,16 +49,23 @@ final class ControllerLifecycleTests: XCTestCase {
     }
 
     func testShutdownNowMarksEverythingOffAndKeepsDesiredState() async {
+        // Two machines, so two masters have to be asked to exit. The exit
+        // request bypasses the fake runner and runs the real ssh against a
+        // socket that does not exist, which fails at once.
+        let other = ForwardSpec(machine: "box-b", localPort: 8080)
+        controller.setFavourites([Favourite(name: "postgres", spec: postgres), Favourite(name: "web", spec: other)])
         await controller.setForward(id: controller.forwards[0].id, on: true)
         await controller.setForward(id: controller.forwards[1].id, on: true)
+        XCTAssertEqual(runner.runningMasters.count, 2)
 
         let started = Date()
         controller.shutdownNow()
 
-        XCTAssertLessThan(Date().timeIntervalSince(started), 2.5, "exits are requested in parallel, with a cap")
+        XCTAssertLessThan(Date().timeIntervalSince(started), 1.5, "well under the 2.5 s cap: the two exits run side by side")
         XCTAssertTrue(controller.forwards.allSatisfy { $0.desiredOn })
         XCTAssertTrue(controller.forwards.allSatisfy { $0.state == .off })
         XCTAssertEqual(controller.machineState("prod-db-01"), .disconnected)
+        XCTAssertEqual(controller.machineState("box-b"), .disconnected)
     }
 
     func testScanLeavesPinnedRemotePortsAlone() async {
