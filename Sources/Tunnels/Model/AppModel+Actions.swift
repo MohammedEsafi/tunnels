@@ -45,6 +45,12 @@ extension AppModel {
         SMAppService.mainApp.status == .enabled
     }
 
+    /// The login item was registered but macOS wants the user to approve it
+    /// in System Settings, or disabled it there.
+    var launchAtLoginNeedsApproval: Bool {
+        SMAppService.mainApp.status == .requiresApproval
+    }
+
     func setLaunchAtLogin(_ enabled: Bool) throws {
         if enabled {
             try SMAppService.mainApp.register()

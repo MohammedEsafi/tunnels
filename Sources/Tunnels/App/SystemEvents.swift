@@ -42,11 +42,26 @@ final class SystemEvents {
     }
 }
 
-/// Posts user notifications. Authorisation is asked for lazily, the first
-/// time there is something to say.
+/// Posts user notifications. Authorisation is asked for when the setting is
+/// switched on, and again the first time there is something to say.
 enum Notifier {
+    /// Notification APIs trap in a process without a bundle (`swift run`).
+    private static var available: Bool { Bundle.main.bundleIdentifier != nil }
+
+    static func requestAuthorization() {
+        guard available else { return }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    /// True when the user has turned notifications off for the app in System Settings.
+    static func isDenied() async -> Bool {
+        guard available else { return false }
+        return await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .denied
+    }
+
     static func post(title: String, body: String) {
         DebugLog.log("notification: \(title) — \(body)")
+        guard available else { return }
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
