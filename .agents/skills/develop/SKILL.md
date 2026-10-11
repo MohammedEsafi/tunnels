@@ -1,5 +1,5 @@
 ---
-name: tunnels-dev
+name: develop
 description: Set up, build and run Tunnels locally: the toolchain, the build and bundle scripts, the Docker lab with two ssh machines, debug logging and the snapshot harness. Use when someone wants to run the app from source, try it against test machines, or capture what the panel shows.
 ---
 
@@ -48,7 +48,7 @@ scripts/testenv.sh down
 
 - `up` builds the containers, generates a key in `testenv/keys/` (ignored by
   git), and adds Host blocks for `box-a` and `box-b` to `~/.ssh/config`
-  between `# >>> tunnels-test` and `# <<< tunnels-test` markers. `down`
+  between `# >>> testing` and `# <<< testing` markers. `down`
   removes exactly that block and keeps `~/.ssh/config.tunnels-backup`. The
   script refuses to touch the file if the markers are missing or duplicated.
 - Each box serves 8080 (web page), 8081 (JSON api), 7777 (TCP echo) and 9999
