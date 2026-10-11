@@ -3,5 +3,5 @@
 **How it was checked**
 - [ ] `swift build -Xswiftc -warnings-as-errors`, `swift test` and `swift-format lint --strict` pass
 - [ ] Core change: a test with `FakeRunner` (a bug fix: one that failed first)
-- [ ] User-visible change: tried against the Docker lab; `documentation/USAGE.md` and `documentation/TESTING.md` updated
-- [ ] Commit messages follow `documentation/CONTRIBUTING.md`
+- [ ] User-visible change: tried against the Docker lab; the `tunnels-usage` and `tunnels-test` skills updated
+- [ ] Commit messages follow the `tunnels-contribute` skill

@@ -1,8 +1,3 @@
----
-name: tunnels-changelog
-description: What changed in each version of Tunnels, in Keep a Changelog form. Use when writing release notes, when adding a line for a change you made, or when checking whether a behaviour is new.
----
-
 # Changelog
 
 Add a line under Unreleased with every user-visible change, under Security,
@@ -47,8 +42,9 @@ date. Versions follow [semantic versioning](https://semver.org/).
   App, Model, Views and Debug in the app; views read through `AppModel`; the
   core takes its ssh settings as `SSHOptions` instead of reading the
   environment.
-- Documentation lives in `documentation/`, each file with a front matter that
-  says when to read it.
+- The documentation is a set of Claude Code skills under `.agents/skills/` (linked from `.claude/skills/`),
+  so a person or an agent can ask for usage help, run the tests, or follow
+  the contribution and release steps from the repository itself.
 
 ## [0.1.0] — 2026-10-11
 
