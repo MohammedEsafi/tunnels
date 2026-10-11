@@ -57,17 +57,16 @@ struct MachineSection: View {
 
     @ViewBuilder
     private var hostMenu: some View {
-        Button {
-            model.enableAllPorts(alias)
-        } label: {
-            if isAuto { Label("All Ports", systemImage: "checkmark") } else { Text("All Ports") }
-        }
-        Button {
-            model.enablePinnedOnly(alias)
-        } label: {
-            if isAuto { Text("Pinned Ports Only") } else { Label("Pinned Ports Only", systemImage: "checkmark") }
-        }
-        .disabled(!isAuto)
+        // Toggles become checked menu items, so the tick is a real menu state
+        // and the layout does not shift when the menu first appears.
+        Toggle("All Ports", isOn: Binding(
+            get: { isAuto },
+            set: { on in if on && !isAuto { model.enableAllPorts(alias) } }
+        ))
+        Toggle("Pinned Ports Only", isOn: Binding(
+            get: { !isAuto },
+            set: { on in if on && isAuto { model.enablePinnedOnly(alias) } }
+        ))
         Divider()
         Button("Copy ssh Command") { model.copySSHCommand(alias) }
             .disabled(!forwards.contains { $0.desiredOn })
