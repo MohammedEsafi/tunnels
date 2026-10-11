@@ -271,12 +271,17 @@ struct LogsPage: View {
     @Environment(AppModel.self) private var model
     @State private var selected: String? = ProcessInfo.processInfo.environment["TUNNELS_SNAPSHOT_LOG"]
     @State private var textHeight: CGFloat = 0
+    @State private var tookSelection = false
 
     private var aliases: [String] { model.controller.logs.keys.sorted() }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PageHeader(title: "Connection Logs", back: .settings)
+                .onAppear {
+                    if !tookSelection, let wanted = model.logSelection { selected = wanted; model.logSelection = nil }
+                    tookSelection = true
+                }
             if aliases.isEmpty {
                 Text("No connections yet.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)

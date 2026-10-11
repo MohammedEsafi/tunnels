@@ -17,8 +17,6 @@ final class AppModel {
     private(set) var favourites: [Favourite] = []
     /// Machines known to the favourites file as all-ports hosts.
     private(set) var autoHosts: [AutoHost] = []
-    /// The host whose switch was just turned on and needs the question answered.
-    var modeQuestion: String?
     private(set) var favouritesProblems: [String] = []
     /// ssh config Hosts first, then Tailscale peers not already covered.
     private(set) var hosts: [HostEntry] = []
@@ -33,7 +31,7 @@ final class AppModel {
     var popoverVisible = false {
         didSet {
             popoverVisible ? startExternalScanning() : stopExternalScanning()
-            if popoverVisible { reloadHosts() } else { quickOpenVisible = false; quickOpenText = ""; menuPage = .main; modeQuestion = nil }
+            if popoverVisible { reloadHosts() } else { quickOpenVisible = false; quickOpenText = ""; menuPage = .main }
         }
     }
 
@@ -89,6 +87,82 @@ final class AppModel {
             FileManager.default.createFile(atPath: path, contents: Data("# Host example\n#   HostName 10.0.0.5\n#   User you\n".utf8), attributes: [.posixPermissions: 0o600])
         }
         NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    }
+
+    /// Which machine the Connection Logs page should open on.
+    var logSelection: String?
+
+    // MARK: Row menu actions
+
+    func openInBrowser(_ spec: ForwardSpec) {
+        if let url = URL(string: "http://localhost:\(spec.localPort)/") { NSWorkspace.shared.open(url) }
+    }
+
+    /// Ports that are probably HTTP, for enabling "Open in Browser".
+    static func looksLikeHTTP(_ port: Int) -> Bool {
+        port == 80 || port == 443 || (3000...3999).contains(port) || (5000...5999).contains(port)
+            || (8000...8999).contains(port) || (9000...9999).contains(port)
+    }
+
+    func renameForward(_ forward: Forward, to name: String) {
+        guard let favourite = favourites.first(where: { $0.spec == forward.spec }) else { return }
+        rename(favourite, to: name)
+    }
+
+    /// Move a pinned forward to another local port: rewrite the file, then
+    /// reopen it on the new number if it was on.
+    func changeLocalPort(_ forward: Forward, to port: Int) {
+        guard port != forward.spec.localPort, (1...65535).contains(port) else { return }
+        let wasOn = forward.desiredOn
+        Task {
+            await controller.remove(id: forward.id)
+            try? Favourites.changeLocalPort(forward.spec, to: port, in: favouritesURL)
+            reloadFavourites()
+            if wasOn, let moved = controller.forwards.first(where: { $0.spec.machine == forward.spec.machine && $0.spec.localPort == port }) {
+                await controller.setForward(id: moved.id, on: true)
+            }
+        }
+    }
+
+    /// A discovered port becomes an ordinary pinned forward with a name.
+    func pinDiscovered(_ forward: Forward, name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        try? Favourites.add(Favourite(name: trimmed.isEmpty ? forward.name : trimmed, spec: forward.spec), to: favouritesURL)
+        reloadFavourites()
+    }
+
+    func showLog(_ alias: String) {
+        logSelection = alias
+        menuPage = .logs
+    }
+
+    /// The plain ssh equivalent of this machine's forwards, for pasting elsewhere.
+    func copySSHCommand(_ alias: String) {
+        let on = controller.forwards(on: alias).filter(\.desiredOn)
+        var parts = ["ssh", "-N"]
+        for forward in on { parts += ["-L", forward.spec.sshArgument] }
+        parts.append(alias)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(parts.joined(separator: " "), forType: .string)
+    }
+
+    /// Everything about a machine goes: connection, pinned forwards, all-ports
+    /// entry. The machine itself still exists in ssh config or Tailscale.
+    func forgetMachine(_ alias: String) {
+        reconnector.cancel(alias)
+        for favourite in favourites where favourite.spec.machine == alias {
+            try? Favourites.remove(favourite.spec, from: favouritesURL)
+        }
+        try? Favourites.removeHost(alias, from: favouritesURL)
+        Task {
+            await controller.disableAutoHost(alias)
+            await controller.setMachine(alias: alias, on: false)
+            for forward in controller.forwards(on: alias) {
+                await controller.remove(id: forward.id)
+            }
+            reloadFavourites()
+        }
     }
 
     /// "localhost:<port>" to the clipboard, the usual next step after opening.
@@ -241,7 +315,6 @@ final class AppModel {
         if on {
             switchOn(alias)
         } else {
-            modeQuestion = nil
             reconnector.cancel(alias)
             Task { await controller.setMachine(alias: alias, on: false) }
         }
@@ -333,7 +406,6 @@ final class AppModel {
     /// forgets "not this one" choices and any offset. Both survive automatic
     /// reconnects and relaunches otherwise.
     func enableAllPorts(_ alias: String) {
-        modeQuestion = nil
         if !isAutoHost(alias) {
             try? Favourites.addHost(AutoHost(name: alias), to: favouritesURL)
         } else {
@@ -345,17 +417,20 @@ final class AppModel {
         controller.enableAutoHost(alias, excluded: [], offset: nil)
     }
 
-    /// At launch: resume watching with the exclusions and offset on file.
+    /// Resume watching with the exclusions and offset on file, and reopen
+    /// any pinned forwards on the same machine.
     private func resumeAllPorts(_ alias: String) {
         let host = autoHosts.first { $0.name == alias }
         controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: host?.offset)
+        if controller.forwards(on: alias).contains(where: { !$0.isDiscovered }) {
+            Task { await controller.setMachine(alias: alias, on: true) }
+        }
     }
 
     /// The question's other answer: freeze what all-ports mode had found.
     /// The ports open when the host was switched off, minus the ones closed,
     /// become ordinary pinned forwards, and watching stops for good.
     func enablePinnedOnly(_ alias: String) {
-        modeQuestion = nil
         let pinnedAlready = Set(favourites.filter { $0.spec.machine == alias }.map(\.spec.localPort))
         let frozen = (controller.lastDiscovered[alias] ?? []).subtracting(pinnedAlready)
         for port in frozen.sorted() {
@@ -369,10 +444,12 @@ final class AppModel {
         }
     }
 
-    /// Switch on a host: ask when it is an all-ports host, otherwise just open.
+    /// Switch on a host: an all-ports host resumes watching with what it had
+    /// (exclusions, offset); any other just reopens its pinned forwards. The
+    /// mode itself is changed from the host's right-click menu.
     func switchOn(_ alias: String) {
         if isAutoHost(alias) {
-            modeQuestion = alias
+            resumeAllPorts(alias)
         } else {
             Task { await controller.setMachine(alias: alias, on: true) }
         }
@@ -395,7 +472,6 @@ final class AppModel {
 
     /// × on an all-ports host row: stop watching and forget the mode.
     func forgetAutoHost(_ alias: String) {
-        modeQuestion = nil
         try? Favourites.removeHost(alias, from: favouritesURL)
         reloadFavourites()
         Task { await controller.disableAutoHost(alias) }
