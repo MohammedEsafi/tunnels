@@ -40,24 +40,28 @@ struct ForwardRow: View {
             }
 
             if editing == .port {
-                HStack(spacing: 3) {
-                    inlineField(placeholder: String(forward.spec.localPort)).frame(width: 64)
-                    Text("→ \(String(forward.spec.remotePort))").font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
+                // The switch steps aside so the field and the mapping fit on one line.
+                HStack(spacing: 5) {
+                    inlineField(placeholder: String(forward.spec.localPort)).frame(width: 66)
+                    Text("→").font(.system(size: 12)).foregroundStyle(.tertiary)
+                    Text(String(forward.spec.remotePort)).font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
                 }
             } else if !portIsName || forward.spec.localPort != forward.spec.remotePort {
                 PortColumn(spec: forward.spec)
             }
 
-            Toggle("", isOn: Binding(
-                get: { forward.desiredOn },
-                set: { on in
-                    if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: on) }
-                }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .labelsHidden()
-            .accessibilityLabel("\(forward.name) switch")
+            if editing != .port {
+                Toggle("", isOn: Binding(
+                    get: { forward.desiredOn },
+                    set: { on in
+                        if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: on) }
+                    }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+                .accessibilityLabel("\(forward.name) switch")
+            }
         }
         .padding(.horizontal, 10)
         .frame(height: 32)
@@ -116,7 +120,13 @@ struct ForwardRow: View {
     private func begin(_ what: Editing, with text: String) {
         draft = text
         editing = what
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { focused = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            focused = true
+            // Pre-select the current value so typing replaces it.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+            }
+        }
     }
 
     private func inlineField(placeholder: String) -> some View {
@@ -132,6 +142,7 @@ struct ForwardRow: View {
             .frame(height: 22)
             .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(0.25)))
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.accentColor))
+            .focusEffectDisabled()
     }
 
     private func commit() {
