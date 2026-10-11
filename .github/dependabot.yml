@@ -1,0 +1,9 @@
+version: 2
+updates:
+  # The three GitHub Actions the workflows use; nothing else has dependencies.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
