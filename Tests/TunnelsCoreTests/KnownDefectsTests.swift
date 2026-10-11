@@ -55,9 +55,7 @@ final class KnownDefectsTests: XCTestCase {
         await controller.setForward(id: controller.forwards[0].id, on: false)
 
         XCTAssertEqual(controller.forwards[0].state, .off)
-        XCTExpectFailure("P0-6: close only cancels .active forwards, so ssh keeps the local port bound") {
-            XCTAssertEqual(runner.calls(containing: "cancel").count, 1)
-        }
+        XCTAssertEqual(runner.calls(containing: "cancel").count, 1)
     }
 
     // P0-6, second half
@@ -74,10 +72,8 @@ final class KnownDefectsTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 200_000_000)
 
         XCTAssertFalse(controller.forwards[0].desiredOn)
-        XCTExpectFailure("P0-6: the desiredOn check happens before addForward, not after") {
-            XCTAssertEqual(controller.forwards[0].state, .off)
-            XCTAssertEqual(runner.calls(containing: "cancel").count, 1)
-        }
+        XCTAssertEqual(controller.forwards[0].state, .off)
+        XCTAssertTrue(runner.runningMasters.isEmpty, "nothing is wanted, so the master and its forward are gone")
     }
 
     // P0-7
