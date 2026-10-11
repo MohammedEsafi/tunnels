@@ -37,16 +37,38 @@ final class StatusItemController {
         guard let button = statusItem.button else { return }
         let active = model.controller.activeCount
         let dropped = model.controller.droppedCount
-        let symbol = dropped > 0 ? "arrow.left.arrow.right.circle" : "arrow.left.arrow.right"
-        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Tunnels")?
-            .withSymbolConfiguration(config)
-        button.image?.isTemplate = true
+        button.image = StatusItemController.ringGlyph(attention: dropped > 0)
         button.title = active > 0 || dropped > 0 ? " \(active)" : ""
         button.appearsDisabled = active == 0 && dropped == 0 && !model.controller.anyDesired
         button.toolTip = dropped > 0
             ? "Tunnels: \(active) active, \(dropped) dropped"
             : (active > 0 ? "Tunnels: \(active) active" : "Tunnels: nothing forwarding")
+    }
+
+    /// The app icon's tilted ring at menu bar size, as a template image so it
+    /// follows the menu bar's light or dark appearance. With `attention` a
+    /// dot sits inside the ring.
+    static func ringGlyph(attention: Bool) -> NSImage {
+        let size = NSSize(width: 18, height: 16)
+        let image = NSImage(size: size, flipped: false) { _ in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            context.saveGState()
+            context.translateBy(x: 9, y: 8)
+            context.rotate(by: 28 * .pi / 180)
+            let ring = CGRect(x: -6.5, y: -4.5, width: 13, height: 9)
+            context.setStrokeColor(NSColor.black.cgColor)
+            context.setLineWidth(2.2)
+            context.strokeEllipse(in: ring)
+            if attention {
+                context.setFillColor(NSColor.black.cgColor)
+                context.fillEllipse(in: CGRect(x: -1.6, y: -1.6, width: 3.2, height: 3.2))
+            }
+            context.restoreGState()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "Tunnels"
+        return image
     }
 
     @objc func toggle() {
