@@ -105,6 +105,10 @@ final class AppModel {
     }
 
     func renameForward(_ forward: Forward, to name: String) {
+        if forward.isDiscovered {
+            pinDiscovered(forward, name: name)
+            return
+        }
         guard let favourite = favourites.first(where: { $0.spec == forward.spec }) else { return }
         rename(favourite, to: name)
     }
@@ -115,6 +119,18 @@ final class AppModel {
         guard port != forward.spec.localPort, (1...65535).contains(port) else { return }
         let wasOn = forward.desiredOn
         Task {
+            if forward.isDiscovered {
+                // Pin it on the new number; discovery then leaves this remote port alone.
+                await controller.excludePort(forward.spec.remotePort, on: forward.spec.machine)
+                try? Favourites.setExcluded(controller.autoExcluded[forward.spec.machine] ?? [], forHost: forward.spec.machine, in: favouritesURL)
+                let moved = ForwardSpec(machine: forward.spec.machine, localPort: port, remoteHost: forward.spec.remoteHost, remotePort: forward.spec.remotePort)
+                try? Favourites.add(Favourite(name: forward.name, spec: moved), to: favouritesURL)
+                reloadFavourites()
+                if let pinned = controller.forwards.first(where: { $0.spec == moved }) {
+                    await controller.setForward(id: pinned.id, on: true)
+                }
+                return
+            }
             await controller.remove(id: forward.id)
             try? Favourites.changeLocalPort(forward.spec, to: port, in: favouritesURL)
             reloadFavourites()

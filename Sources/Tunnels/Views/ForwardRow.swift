@@ -13,14 +13,14 @@ struct ForwardRow: View {
     @State private var draft = ""
     @FocusState private var focused: Bool
 
-    enum Editing { case name, port, pinName }
+    enum Editing { case name, port }
 
     var body: some View {
         HStack(spacing: 8) {
             leadingIcon
 
-            if editing == .name || editing == .pinName {
-                inlineField(placeholder: editing == .pinName ? "Name" : forward.name)
+            if editing == .name {
+                inlineField(placeholder: forward.name)
             } else {
                 Button {
                     if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: !forward.desiredOn) }
@@ -101,13 +101,13 @@ struct ForwardRow: View {
         Button("Open in Browser") { model.openInBrowser(forward.spec) }
             .disabled(!AppModel.looksLikeHTTP(forward.spec.remotePort))
         Divider()
+        // On a discovered port, renaming or moving it pins it as a side effect.
+        Button("Rename…") { begin(.name, with: forward.name) }
+        Button("Change Local Port…") { begin(.port, with: String(forward.spec.localPort)) }
+        Divider()
         if forward.isDiscovered {
-            Button("Pin as Forward…") { begin(.pinName, with: "") }
             Button("Not This Port") { model.excludePort(forward) }
         } else {
-            Button("Rename…") { begin(.name, with: forward.name) }
-            Button("Change Local Port…") { begin(.port, with: String(forward.spec.localPort)) }
-            Divider()
             Button("Close and Forget") { model.removeForward(forward) }
         }
     }
@@ -144,8 +144,6 @@ struct ForwardRow: View {
             if !text.isEmpty { model.renameForward(forward, to: text) }
         case .port:
             if let port = Int(text) { model.changeLocalPort(forward, to: port) }
-        case .pinName:
-            model.pinDiscovered(forward, name: text)
         }
     }
 
