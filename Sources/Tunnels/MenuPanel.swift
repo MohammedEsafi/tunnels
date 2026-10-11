@@ -15,7 +15,6 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
     private var localMonitor: Any?
     private var anchorTopLeft: NSPoint = .zero
     private let onClose: () -> Void
-    var ignoreClicksIn: NSRect = .zero
 
     init<Content: View>(rootView: Content, onClose: @escaping () -> Void) {
         self.onClose = onClose
@@ -96,9 +95,10 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
     }
 
     override func close() {
+        let wasVisible = isVisible
         removeMonitors()
         super.close()
-        onClose()
+        if wasVisible { onClose() }
     }
 
     private func resize(to size: CGSize) {
@@ -112,19 +112,19 @@ final class MenuPanel: NSPanel, NSWindowDelegate {
 
     private func installMonitors() {
         removeMonitors()
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             guard let self else { return }
-            // The status item click toggles the panel itself; do not close twice.
-            if ignoreClicksIn.contains(NSEvent.mouseLocation) { return }
             Task { @MainActor in self.close() }
         }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            guard let self else { return event }
-            if event.keyCode == 53 { // Escape
-                Task { @MainActor in self.close() }
-                return nil
+            guard let self, event.keyCode == 53 else { return event } // Escape
+            // An inline editor owns Escape while it is active: it cancels the edit.
+            if let editor = self.firstResponder as? NSTextView, editor.isFieldEditor,
+               (editor.delegate as? NSTextField)?.delegate is InlineTextField.Coordinator {
+                return event
             }
-            return event
+            Task { @MainActor in self.close() }
+            return nil
         }
     }
 
