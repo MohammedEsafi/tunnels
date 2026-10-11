@@ -40,13 +40,13 @@ shows the per-machine ssh output.
 ## The Docker lab
 
 ```bash
-scripts/testenv.sh up        # box-a:2222, box-b:2223 and a redis
-scripts/testenv.sh status    # containers, ssh reachability, things to try
-scripts/testenv.sh ssh-add   # load the lab key into the agent
-scripts/testenv.sh down
+simulation/machines up        # box-a:2222, box-b:2223 and a redis
+simulation/machines status    # containers, ssh reachability, things to try
+simulation/machines ssh-add   # load the lab key into the agent
+simulation/machines down
 ```
 
-- `up` builds the containers, generates a key in `testenv/keys/` (ignored by
+- `up` builds the containers, generates a key in `simulation/keys/` (ignored by
   git), and adds Host blocks for `box-a` and `box-b` to `~/.ssh/config`
   between `# >>> testing` and `# <<< testing` markers. `down`
   removes exactly that block and keeps `~/.ssh/config.tunnels-backup`. The
@@ -57,7 +57,7 @@ scripts/testenv.sh down
 - The boxes have no `ss` or `netstat`, so all-ports mode uses the
   `/proc/net/tcp` fallback there.
 
-Useful drills: `docker compose -f testenv/docker-compose.yml stop box-a` to
+Useful drills: `docker compose -f simulation/compose.yml stop box-a` to
 make a machine drop, `start box-a` to bring it back; `pkill -f "ssh -N -M.*
 box-a$"` to kill one master; a local `python3 -m http.server 8081 --bind
 0.0.0.0` to occupy a port the boxes also serve.
@@ -97,7 +97,7 @@ Sources/TunnelsCore         the engine and the file formats, no UI
 Sources/Tunnels             the app: App/, Model/, Views/, Debug/
 Sources/tunnelsctl          command-line harness for the core
 Tests/TunnelsCoreTests      XCTest with a scripted stand-in for ssh
-scripts/                    bundle.sh, run.sh, makeicon.swift, testenv.sh
-testenv/                    the Docker lab
+scripts/                    bundle.sh, run.sh, makeicon.swift
+simulation/                 two ssh machines in Docker, and the script that runs them
 .agents/skills/             these skills; .claude/skills is a symlink to it
 ```

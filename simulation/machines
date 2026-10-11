@@ -1,20 +1,19 @@
 #!/bin/bash
-# A local lab for trying Tunnels: two ssh "machines" in Docker with services
-# on several ports, plus a redis only reachable through them.
+# Two ssh "machines" in Docker to try Tunnels against, with services on
+# several ports and a redis only reachable through them.
 #
-#   scripts/testenv.sh up       build, start, add Host blocks to ~/.ssh/config
-#   scripts/testenv.sh down     stop, remove the Host blocks
-#   scripts/testenv.sh status   what is running, what to try
-#   scripts/testenv.sh ssh-add  load the lab key into the agent (optional)
+#   simulation/machines up       build, start, add Host blocks to ~/.ssh/config
+#   simulation/machines down     stop, remove the Host blocks
+#   simulation/machines status   what is running, what to try
+#   simulation/machines ssh-add  load the key into the agent (optional)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ENV="$ROOT/testenv"
+ENV="$(cd "$(dirname "$0")" && pwd)"
 KEY="$ENV/keys/tunnels_test"
 KNOWN="$ENV/known_hosts"
 CONFIG="$HOME/.ssh/config"
-MARK_START="# >>> tunnels-test (managed by scripts/testenv.sh)"
-MARK_END="# <<< tunnels-test"
+MARK_START="# >>> tunnels-simulation (managed by simulation/machines)"
+MARK_END="# <<< tunnels-simulation"
 
 docker_ok() { docker info >/dev/null 2>&1; }
 
@@ -126,12 +125,12 @@ Things to try in Tunnels (type into the field, or pin them):
   box-a:9999            a port that accepts and never answers
 
 Failure drills:
-  docker compose -f testenv/docker-compose.yml stop box-a   -> forwards drop, app retries, then gives up
-  docker compose -f testenv/docker-compose.yml start box-a  -> press the orange circle to retry
+  docker compose -f simulation/compose.yml stop box-a   -> forwards drop, app retries, then gives up
+  docker compose -f simulation/compose.yml start box-a  -> press the orange circle to retry
   ssh -N -L 3999:localhost:7777 box-b                       -> shows under box-b as started outside Tunnels
 EOF
     ;;
   *)
-    echo "usage: $0 up|down|status|ssh-add"; exit 2
+    echo "usage: simulation/machines up|down|status|ssh-add"; exit 2
     ;;
 esac

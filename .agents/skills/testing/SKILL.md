@@ -74,7 +74,7 @@ The app has no unit tests; the drills cover it. Run the debug bundle with
 |---|---|
 | Turn a favourite on | master starts, row blue, `curl localhost:<port>` answers |
 | `pkill -f "ssh -N -M.* box-a$"` | rows orange, new master within seconds, rows blue; after ten seconds or more down, a "box-a is back" notification |
-| `docker compose -f testenv/docker-compose.yml stop box-a` | retries at 2, 4, 8, 16, 30 s, then "box-a is down"; `start box-a`, click the orange circle |
+| `docker compose -f simulation/compose.yml stop box-a` | retries at 2, 4, 8, 16, 30 s, then "box-a is down"; `start box-a`, click the orange circle |
 | Unknown host, or a key not in the agent | machine failed, tooltip on the circle, no retry loop |
 | All Ports on box-a | 7777, 8080, 8081, 9999 forwarded within ten seconds |
 | All Ports on box-b as well | box-b moves to +10000, one "ports moved" notification |

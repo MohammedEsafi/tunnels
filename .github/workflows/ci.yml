@@ -32,7 +32,7 @@ jobs:
       - name: Shell scripts
         run: |
           brew install shellcheck
-          shellcheck scripts/*.sh testenv/*.sh
+          shellcheck scripts/*.sh simulation/*.sh simulation/machines
 
       - name: Bundle
         run: scripts/bundle.sh
