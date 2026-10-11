@@ -12,6 +12,7 @@ final class AppModel {
     let controller: ForwardController
     let reconnector: Reconnector
     let favouritesURL: URL
+    let socketDirectory: URL
 
     private(set) var favourites: [Favourite] = []
     /// Machines known to the favourites file as all-ports hosts.
@@ -105,7 +106,10 @@ final class AppModel {
     private init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Tunnels")
-        controller = ForwardController(runner: runner, socketDirectory: support.appendingPathComponent("sockets"))
+        let sockets = ProcessInfo.processInfo.environment["TUNNELS_SOCKET_DIR"].map { URL(fileURLWithPath: $0) }
+            ?? support.appendingPathComponent("sockets")
+        socketDirectory = sockets
+        controller = ForwardController(runner: runner, socketDirectory: sockets)
         reconnector = Reconnector(controller: controller)
         favouritesURL = Favourites.defaultURL
 
@@ -137,9 +141,7 @@ final class AppModel {
 
     /// Masters left behind by a crash or force quit would hold our ports.
     private func sweepStaleMasters() async {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Tunnels/sockets")
-        let stale = await ExternalScanner.staleMasters(runner: runner, socketDirectory: support)
+        let stale = await ExternalScanner.staleMasters(runner: runner, socketDirectory: socketDirectory)
         for pid in stale {
             ExternalScanner.stop(pid: pid)
             DebugLog.log("stopped stale ssh master \(pid)")
@@ -317,12 +319,21 @@ final class AppModel {
     }
 
     /// From the suggestion, or the question: watch every port on the machine.
+    /// Saying "all ports" explicitly forgets any "not this one" choices; they
+    /// only survive automatic reconnects and relaunches.
     func enableAllPorts(_ alias: String) {
         modeQuestion = nil
         if !isAutoHost(alias) {
             try? Favourites.addHost(AutoHost(name: alias), to: favouritesURL)
-            reloadFavourites()
+        } else {
+            try? Favourites.setExcluded([], forHost: alias, in: favouritesURL)
         }
+        reloadFavourites()
+        controller.enableAutoHost(alias, excluded: [])
+    }
+
+    /// At launch: resume watching with the exclusions on file.
+    private func resumeAllPorts(_ alias: String) {
         let excluded = autoHosts.first { $0.name == alias }?.excluded ?? []
         controller.enableAutoHost(alias, excluded: excluded)
     }
@@ -353,7 +364,12 @@ final class AppModel {
         let alias = forward.spec.machine
         Task {
             await controller.excludePort(forward.spec.localPort, on: alias)
-            try? Favourites.setExcluded(controller.autoExcluded[alias] ?? [], forHost: alias, in: favouritesURL)
+            do {
+                let written = try Favourites.setExcluded(controller.autoExcluded[alias] ?? [], forHost: alias, in: favouritesURL)
+                DebugLog.log("exclude \(forward.spec.localPort) on \(alias): now \(controller.autoExcluded[alias] ?? []), written=\(written)")
+            } catch {
+                DebugLog.log("exclude \(forward.spec.localPort) on \(alias): write failed \(error)")
+            }
             reloadFavourites()
         }
     }
@@ -389,7 +405,7 @@ final class AppModel {
         isRestoring = true
         defer { isRestoring = false }
         for alias in state.autoHostsOn where isAutoHost(alias) {
-            enableAllPorts(alias)
+            resumeAllPorts(alias)
         }
         let byMachine = Dictionary(grouping: state.onForwards, by: \.spec.machine)
         await withTaskGroup(of: Void.self) { group in

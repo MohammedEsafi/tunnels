@@ -88,10 +88,15 @@ Problems in the file are shown at the top of the popover with an Open button.
   seconds, and forwards every TCP listener it finds (1024 up to 32767, below
   the ephemeral range) to the same local port, adding and removing forwards
   as services come and go. The host shows a small layers glyph after its name; its port rows
-  have no name. Switch a port off to say "not this one", which is
-  remembered. Switching the host off stops watching; switching it on again
-  asks whether you want all ports or only the pinned ones, and answering
-  "Pinned only" ends all-ports mode for that host. Stored in the
+  have no name. Switch a port off (or ×) to say "not this one"; that is kept
+  across reconnects and relaunches. Switching the host off stops watching;
+  switching it on again asks whether you want all ports or only the pinned
+  ones. Answering "All ports" forgets the "not this one" choices, and
+  "Pinned only" ends all-ports mode for that host.
+- **A forward with nothing behind it.** A pinned forward whose remote port has
+  no listener shows an orange circle with the tooltip "Nothing listening on
+  host:port". It is open and will work the moment something starts there;
+  checked when it opens and every 30 seconds. Stored in the
   favourites file as a `[[host]]` entry with `all_ports = true` and an
   optional `exclude = [...]`.
 - **States.** Blue circle: active. Spinner: opening. Orange circle with ↻:

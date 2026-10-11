@@ -52,6 +52,8 @@ public enum ForwardState: Hashable, Sendable {
     case off
     case pending
     case active
+    /// Open on both ends, but nothing listens on the remote port yet.
+    case noService
     case dropped
     case error(String)
 }

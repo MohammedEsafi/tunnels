@@ -15,10 +15,16 @@ public enum PortDiscovery {
     }
 
     public static func parse(_ output: String) -> Set<Int> {
+        listeners(output).filter(wanted)
+    }
+
+    /// Every TCP listener, unfiltered. Used to tell whether a pinned
+    /// forward's remote port has anything behind it.
+    public static func listeners(_ output: String) -> Set<Int> {
         var ports: Set<Int> = []
         for line in output.split(separator: "\n") {
             if let port = procNetPort(line) {
-                if wanted(port) { ports.insert(port) }
+                ports.insert(port)
                 continue
             }
             let lower = line.lowercased()
@@ -30,7 +36,7 @@ public enum PortDiscovery {
                 let host = token[..<colon]
                 guard !host.isEmpty else { continue }
                 guard host.allSatisfy({ $0.isNumber || $0 == "." || $0 == ":" || $0 == "[" || $0 == "]" || $0 == "*" || $0 == "%" || $0.isLetter }) else { continue }
-                if wanted(port) { ports.insert(port) }
+                ports.insert(port)
                 break // first address-like token on the line is the local one
             }
         }

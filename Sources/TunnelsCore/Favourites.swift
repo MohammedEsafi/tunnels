@@ -270,7 +270,10 @@ public extension Favourites {
         try editHostBlock(name, in: url) { lines in
             var kept = lines.filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("exclude") }
             if !excluded.isEmpty {
-                kept.append("exclude = [\(excluded.sorted().map(String.init).joined(separator: ", "))]")
+                // Insert after the last non-blank line so trailing blank lines
+                // (the gap before the next block) stay where they are.
+                let last = kept.lastIndex { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? kept.count - 1
+                kept.insert("exclude = [\(excluded.sorted().map(String.init).joined(separator: ", "))]", at: last + 1)
             }
             return kept
         }

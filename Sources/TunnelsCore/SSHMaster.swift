@@ -42,7 +42,7 @@ public enum SSHErrorText {
         if lower.contains("could not resolve hostname") {
             return "Unknown host"
         }
-        if lower.contains("address already in use") {
+        if lower.contains("address already in use") || lower.contains("port forwarding failed") {
             return "Local port in use"
         }
         if lower.contains("connection refused") || lower.contains("no route to host") {
