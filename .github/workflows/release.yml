@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # so bundle.sh can read the tag
+
+      - name: Build and test
+        run: |
+          swift build -Xswiftc -warnings-as-errors
+          swift test
+
+      - name: Bundle
+        run: scripts/bundle.sh
+
+      - name: Zip
+        run: ditto -c -k --keepParent build/Tunnels.app "Tunnels-${GITHUB_REF_NAME}.zip"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "Tunnels-${GITHUB_REF_NAME}.zip" --title "Tunnels $GITHUB_REF_NAME" --generate-notes
