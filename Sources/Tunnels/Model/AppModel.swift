@@ -25,6 +25,10 @@ final class AppModel {
     /// Machines known to the favourites file as all-ports hosts.
     var autoHosts: [AutoHost] = []
     var favouritesProblems: [String] = []
+    /// The last failed write to the favourites file, if any.
+    var favouritesWriteProblem: String?
+    /// What the problems row shows: parse problems, then a failed write.
+    var fileProblems: [String] { favouritesProblems + (favouritesWriteProblem.map { [$0] } ?? []) }
     /// ssh config Hosts first, then Tailscale peers not already covered.
     private(set) var hosts: [HostEntry] = []
     var sshConfigHosts: [String] = []

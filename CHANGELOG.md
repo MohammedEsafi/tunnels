@@ -24,7 +24,12 @@ All notable changes to this project are recorded here. The format follows
   forward switched off while it is being added, or while nothing listens
   behind it, is cancelled.
 - After a drop the reconnector alone retries a watched machine, so "is down"
-  is true and discovered rows recover with the connection.
+  is true and discovered rows recover with the connection; a scan no longer
+  joins an attempt in progress and restarts the backoff, and All Ports from
+  the menu revives a machine the reconnector had given up on.
+- A plain-port retry switched off while ssh was adding it comes down instead
+  of ending active with its switch off.
+- A favourites file that cannot be written says so in the menu's problems row.
 - A remote that refuses a forward is reported as such instead of "Local port
   in use"; UDP sockets on a macOS remote are no longer forwarded.
 - Quit asks every ssh connection to close at once and also handles SIGINT and

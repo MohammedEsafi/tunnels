@@ -4,7 +4,7 @@ import Foundation
 
 extension Favourites {
     /// One [[favourite]] block. Only non-default keys are written.
-    public static func serialize(_ favourite: Favourite) -> String {
+    static func serialize(_ favourite: Favourite) -> String {
         var lines = [
             "[[favourite]]",
             "name = \"\(escape(favourite.name))\"",

@@ -39,7 +39,7 @@ public final class ForwardController {
     public var discoveryInterval: TimeInterval = 5
     /// Whether a local port is already served by something on this Mac.
     /// Replaceable so tests do not depend on the machine they run on.
-    public var localPortProbe: (Int) -> Bool = LocalPorts.isTaken
+    var localPortProbe: (Int) -> Bool = LocalPorts.isTaken
     var discoveryLoops: [String: Task<Void, Never>] = [:]
     var scanning: Set<String> = []
 
@@ -383,7 +383,7 @@ public final class ForwardController {
     }
 
     /// A machine is wanted while a forward on it is switched on or it is watched.
-    public func isWanted(_ alias: String) -> Bool {
+    func isWanted(_ alias: String) -> Bool {
         autoHosts.contains(alias) || forwards(on: alias).contains { $0.desiredOn }
     }
 
