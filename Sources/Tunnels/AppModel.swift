@@ -98,12 +98,6 @@ final class AppModel {
         if let url = URL(string: "http://localhost:\(spec.localPort)/") { NSWorkspace.shared.open(url) }
     }
 
-    /// Ports that are probably HTTP, for enabling "Open in Browser".
-    static func looksLikeHTTP(_ port: Int) -> Bool {
-        port == 80 || port == 443 || (3000...3999).contains(port) || (5000...5999).contains(port)
-            || (8000...8999).contains(port) || (9000...9999).contains(port)
-    }
-
     func renameForward(_ forward: Forward, to name: String) {
         if forward.isDiscovered {
             pinDiscovered(forward, name: name)

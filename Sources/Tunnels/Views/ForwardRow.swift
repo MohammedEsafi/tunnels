@@ -99,7 +99,6 @@ struct ForwardRow: View {
     private var menu: some View {
         Button("Copy localhost:\(String(forward.spec.localPort))") { model.copyAddress(of: forward.spec) }
         Button("Open in Browser") { model.openInBrowser(forward.spec) }
-            .disabled(!AppModel.looksLikeHTTP(forward.spec.remotePort))
         Divider()
         // On a discovered port, renaming or moving it pins it as a side effect.
         Button("Rename…") { begin(.name, with: forward.name) }
