@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "indentation": { "spaces": 4 },
+  "lineLength": 140,
+  "maximumBlankLines": 1,
+  "respectsExistingLineBreaks": true,
+  "lineBreakBeforeControlFlowKeywords": false,
+  "lineBreakBeforeEachArgument": false,
+  "rules": {
+    "AlwaysUseLowerCamelCase": true,
+    "DoNotUseSemicolons": false,
+    "NoAccessLevelOnExtensionDeclaration": true,
+    "OrderedImports": true,
+    "UseLetInEveryBoundCaseVariable": true,
+    "AllPublicDeclarationsHaveDocumentation": false,
+    "NeverForceUnwrap": false,
+    "NeverUseImplicitlyUnwrappedOptionals": false
+  }
+}
