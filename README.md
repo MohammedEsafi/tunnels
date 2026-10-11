@@ -52,6 +52,3 @@ ask it in plain words: "how do I forward every port on a machine?", "run the
 tests", "add a feature and open a pull request", "cut a release". The agent
 loads the matching skill and answers or acts from it. The files are written
 for people too, so reading them directly works just as well.
-
-[CHANGELOG.md](CHANGELOG.md) records what changed in each version. MIT
-licence, see [LICENSE](LICENSE).
