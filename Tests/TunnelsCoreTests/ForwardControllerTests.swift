@@ -59,7 +59,7 @@ final class ForwardControllerTests: XCTestCase {
             if args.contains("forward") && args.contains("127.0.0.1:6379:localhost:6379") {
                 return ProcessResult(exitCode: 255, stderr: "bind [127.0.0.1]:6379: Address already in use")
             }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         await controller.setForward(id: id(postgres), on: true)
         await controller.setForward(id: id(redis), on: true)
@@ -96,8 +96,7 @@ final class ForwardControllerTests: XCTestCase {
         controller.onMasterDropped = { alias, _ in droppedAlias = alias }
 
         runner.runningMasters.first?.simulateExit(code: 255)
-        // Exit is delivered through the actor and the main actor; give it a moment.
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        await waitUntil { droppedAlias != nil }
 
         XCTAssertEqual(droppedAlias, "prod-db-01")
         XCTAssertEqual(controller.machineState("prod-db-01"), .dropped(attempt: 1))
@@ -164,8 +163,7 @@ final class ForwardControllerTests: XCTestCase {
         var listeners = "LISTEN 0 1 127.0.0.1:5432 0.0.0.0:*"
         runner.script = { args in
             if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         await controller.setForward(id: id(postgres), on: true)
         await controller.setForward(id: id(redis), on: true)
@@ -187,16 +185,12 @@ final class ForwardControllerTests: XCTestCase {
     func testCloseAllStopsWatchingAndMasters() async {
         runner.script = { args in
             if args.contains("--") { return ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*") }
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         controller.discoveryInterval = 3600
         await controller.setForward(id: id(postgres), on: true)
         controller.enableAutoHost("gpu-box")
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline, controller.forwards(on: "gpu-box").first?.state != .active {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
+        await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
         XCTAssertTrue(controller.anyDesired)
 
         await controller.closeAll()
@@ -213,16 +207,12 @@ final class ForwardControllerTests: XCTestCase {
         var listeners = "LISTEN 0 1 127.0.0.1:3000 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:5173 0.0.0.0:*\nLISTEN 0 1 0.0.0.0:22 0.0.0.0:*"
         runner.script = { args in
             if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         controller.discoveryInterval = 3600
         controller.enableAutoHost("gpu-box", excluded: [5173])
         // The loop scans once right away; wait for it rather than racing it.
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline, controller.forwards(on: "gpu-box").first?.state != .active {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
+        await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
 
         XCTAssertEqual(controller.machineState("gpu-box"), .connected)
         let discovered = controller.forwards(on: "gpu-box")
@@ -260,20 +250,16 @@ final class ForwardControllerTests: XCTestCase {
         let takenLocally: Set<String> = ["127.0.0.1:7777:localhost:7777", "127.0.0.1:8080:localhost:8080"]
         runner.script = { args in
             if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
             if args.contains("forward"), let spec = args.last(where: { $0.contains(":") }), takenLocally.contains(spec) {
                 return ProcessResult(exitCode: 255, stderr: "mux_client_forward: forwarding request failed: Port forwarding failed")
             }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         var assigned: [(String, Int)] = []
         controller.onOffsetAssigned = { assigned.append(($0, $1)) }
         controller.discoveryInterval = 3600
         controller.enableAutoHost("box-b")
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline, controller.forwards(on: "box-b").count < 3 {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
+        await waitUntil { self.controller.forwards(on: "box-b").count >= 3 }
 
         let rows = controller.forwards(on: "box-b").sorted { $0.spec.remotePort < $1.spec.remotePort }
         // Every port on the machine moves, including 9999 which was free.
@@ -310,11 +296,10 @@ final class ForwardControllerTests: XCTestCase {
 
     func testPinnedForwardMovesWhenItsPortIsTaken() async {
         runner.script = { args in
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
             if args.contains("forward"), args.contains("127.0.0.1:5432:localhost:5432") {
                 return ProcessResult(exitCode: 255, stderr: "bind [127.0.0.1]:5432: Address already in use")
             }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         var moved: (ForwardSpec, ForwardSpec)?
         controller.onForwardMoved = { moved = ($0, $1) }
@@ -331,11 +316,10 @@ final class ForwardControllerTests: XCTestCase {
     func testManualSwitchOnTriesPlainNumberForMovedPins() async {
         var taken: Set<String> = ["127.0.0.1:5432:localhost:5432"]
         runner.script = { args in
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
             if args.contains("forward"), let spec = args.last(where: { $0.contains(":") }), taken.contains(spec) {
                 return ProcessResult(exitCode: 255, stderr: "bind: Address already in use")
             }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         var moves: [(ForwardSpec, ForwardSpec)] = []
         controller.onForwardMoved = { moves.append(($0, $1)) }
@@ -364,16 +348,12 @@ final class ForwardControllerTests: XCTestCase {
         let listeners = "LISTEN 0 1 127.0.0.1:8080 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8081 0.0.0.0:*"
         runner.script = { args in
             if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         controller.discoveryInterval = 3600
         // Started plain, no clashes.
         controller.enableAutoHost("box-a")
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline, controller.forwards(on: "box-a").count < 2 {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
+        await waitUntil { self.controller.forwards(on: "box-a").count >= 2 }
         XCTAssertEqual(controller.forwards(on: "box-a").map(\.spec.localPort).sorted(), [8080, 8081])
 
         // Later the machine is given an offset (as a restart from file would).
@@ -391,15 +371,11 @@ final class ForwardControllerTests: XCTestCase {
         let listeners = "LISTEN 0 1 127.0.0.1:7777 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8080 0.0.0.0:*"
         runner.script = { args in
             if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
-            if args.contains("check") { return ProcessResult(exitCode: self.runner.runningMasters.isEmpty ? 255 : 0) }
-            return ProcessResult(exitCode: 0)
+            return nil
         }
         controller.discoveryInterval = 3600
         controller.enableAutoHost("box-b")
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline, controller.forwards(on: "box-b").count < 2 {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
+        await waitUntil { self.controller.forwards(on: "box-b").count >= 2 }
         XCTAssertEqual(controller.forwards(on: "box-b").map(\.spec.localPort), [7777, 8080])
 
         // × on each discovered row
