@@ -20,7 +20,9 @@ let spec = ForwardSpec(machine: alias, localPort: localPort, remotePort: remoteP
 
 @MainActor
 func main() async {
-    let controller = ForwardController(runner: SystemProcessRunner(), socketDirectory: socketDir)
+    var options = SSHOptions(socketDirectory: socketDir)
+    options.configPath = ProcessInfo.processInfo.environment["TUNNELS_SSH_CONFIG"].flatMap { $0.isEmpty ? nil : $0 }
+    let controller = ForwardController(runner: SystemProcessRunner(), options: options)
     controller.onMasterDropped = { alias, output in
         print("master for \(alias) dropped: \(output)")
     }

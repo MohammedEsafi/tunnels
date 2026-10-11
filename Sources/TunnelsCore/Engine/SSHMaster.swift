@@ -7,7 +7,7 @@ public actor SSHMaster {
     public let alias: String
     public let socketPath: String
     private let runner: any ProcessRunning
-    private let sshPath: String
+    private let options: SSHOptions
     private var handle: (any ProcessHandle)?
     private var exitCode: Int32?
     private var recentOutput: [String] = []
@@ -16,16 +16,15 @@ public actor SSHMaster {
 
     public init(
         alias: String,
-        socketDirectory: URL,
+        options: SSHOptions,
         runner: any ProcessRunning,
-        sshPath: String = "/usr/bin/ssh",
         onOutput: (@Sendable (String) -> Void)? = nil,
         onExit: @escaping @Sendable (Int32, String) -> Void
     ) {
         self.alias = alias
-        self.socketPath = SSHMaster.socketPath(for: alias, in: socketDirectory)
+        self.socketPath = SSHMaster.socketPath(for: alias, in: options.socketDirectory)
         self.runner = runner
-        self.sshPath = sshPath
+        self.options = options
         self.onOutput = onOutput
         self.onExit = onExit
     }
@@ -40,24 +39,6 @@ public actor SSHMaster {
     public var isRunning: Bool { handle?.isRunning ?? false }
     public var lastOutput: String { recentOutput.joined(separator: "\n") }
 
-    /// Development aid: TUNNELS_SSH_CONFIG=/path makes every ssh call use that
-    /// config file (-F) instead of ~/.ssh/config. Unset in normal use.
-    public static var configArguments: [String] {
-        if let path = ProcessInfo.processInfo.environment["TUNNELS_SSH_CONFIG"], !path.isEmpty {
-            return ["-F", path]
-        }
-        return []
-    }
-
-    public static let masterOptions: [String] = [
-        "-o", "ControlPersist=no",
-        "-o", "BatchMode=yes",
-        "-o", "ExitOnForwardFailure=yes",
-        "-o", "ServerAliveInterval=15",
-        "-o", "ServerAliveCountMax=3",
-        "-o", "StrictHostKeyChecking=accept-new",
-    ]
-
     /// Launch the master and wait until `-O check` answers or the process dies.
     public func start(timeout: TimeInterval = 30, pollInterval: TimeInterval = 0.3) async throws {
         if isRunning { return }
@@ -69,9 +50,9 @@ public actor SSHMaster {
         // A stale socket from a previous run would make ssh refuse to become master.
         try? FileManager.default.removeItem(atPath: socketPath)
 
-        let arguments = ["-N", "-M", "-S", socketPath] + SSHMaster.configArguments + SSHMaster.masterOptions + [alias]
+        let arguments = ["-N", "-M", "-S", socketPath] + options.configArguments + options.masterOptions + [alias]
         let launched = try runner.launch(
-            sshPath,
+            options.sshPath,
             arguments: arguments,
             onOutput: { [weak self] line in
                 guard let self else { return }
@@ -111,7 +92,7 @@ public actor SSHMaster {
 
     /// Run a command on the machine over the existing connection.
     public func run(_ command: String) async throws -> String {
-        let result = try await runner.run(sshPath, arguments: ["-S", socketPath] + SSHMaster.configArguments + ["-o", "BatchMode=yes", alias, "--", command], timeout: 15)
+        let result = try await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-o", "BatchMode=yes", alias, "--", command], timeout: 15)
         guard result.succeeded else {
             throw SSHError.commandFailed(result.stderr.isEmpty ? "exit \(result.exitCode)" : result.stderr)
         }
@@ -119,7 +100,7 @@ public actor SSHMaster {
     }
 
     public func check() async -> Bool {
-        guard let result = try? await runner.run(sshPath, arguments: ["-S", socketPath] + SSHMaster.configArguments + ["-O", "check", alias], timeout: 10) else {
+        guard let result = try? await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-O", "check", alias], timeout: 10) else {
             return false
         }
         return result.succeeded
@@ -127,7 +108,7 @@ public actor SSHMaster {
 
     /// Ask the master to exit, then make sure it is gone.
     public func stop() async {
-        _ = try? await runner.run(sshPath, arguments: ["-S", socketPath] + SSHMaster.configArguments + ["-O", "exit", alias], timeout: 5)
+        _ = try? await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + ["-O", "exit", alias], timeout: 5)
         if let handle, handle.isRunning {
             try? await Task.sleep(nanoseconds: 500_000_000)
             if handle.isRunning { handle.terminate() }
@@ -140,8 +121,8 @@ public actor SSHMaster {
     /// Waits at most two seconds, then gives up; the master dies with the app anyway.
     nonisolated public func requestExitNow() {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: sshPath)
-        process.arguments = ["-S", socketPath] + SSHMaster.configArguments + ["-O", "exit", alias]
+        process.executableURL = URL(fileURLWithPath: options.sshPath)
+        process.arguments = ["-S", socketPath] + options.configArguments + ["-O", "exit", alias]
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
@@ -155,7 +136,7 @@ public actor SSHMaster {
     }
 
     private func control(_ extra: [String]) async throws {
-        let result = try await runner.run(sshPath, arguments: ["-S", socketPath] + SSHMaster.configArguments + extra + [alias], timeout: 15)
+        let result = try await runner.run(options.sshPath, arguments: ["-S", socketPath] + options.configArguments + extra + [alias], timeout: 15)
         if !result.succeeded {
             let text = result.stderr.isEmpty ? result.stdout : result.stderr
             throw SSHError.commandFailed(text.isEmpty ? "ssh exited with status \(result.exitCode)" : text)

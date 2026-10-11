@@ -13,6 +13,9 @@ final class AppModel {
     let reconnector: Reconnector
     let favouritesURL: URL
     let socketDirectory: URL
+    /// TUNNELS_SSH_CONFIG=/path makes every ssh call and the host list use
+    /// that config instead of ~/.ssh/config. A development aid, unset normally.
+    let sshConfigPath: String
     let runner = SystemProcessRunner()
     var watcher: FileWatcher?
     var healthTask: Task<Void, Never>?
@@ -69,7 +72,9 @@ final class AppModel {
         let sockets = ProcessInfo.processInfo.environment["TUNNELS_SOCKET_DIR"].map { URL(fileURLWithPath: $0) }
             ?? support.appendingPathComponent("sockets")
         socketDirectory = sockets
-        controller = ForwardController(runner: runner, socketDirectory: sockets)
+        let configOverride = ProcessInfo.processInfo.environment["TUNNELS_SSH_CONFIG"].flatMap { $0.isEmpty ? nil : $0 }
+        sshConfigPath = configOverride ?? SSHConfig.defaultPath
+        controller = ForwardController(runner: runner, options: SSHOptions(socketDirectory: sockets, configPath: configOverride))
         reconnector = Reconnector(controller: controller)
         favouritesURL = Favourites.defaultURL
 
@@ -127,7 +132,7 @@ final class AppModel {
     }
 
     func reloadHosts() {
-        sshConfigHosts = SSHConfig.hostAliases()
+        sshConfigHosts = SSHConfig.hostAliases(configPath: sshConfigPath)
         mergeHosts()
         Task {
             tailscaleHosts = await TailscaleHosts.fetch(runner: runner)

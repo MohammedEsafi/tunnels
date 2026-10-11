@@ -13,7 +13,7 @@ final class ForwardControllerTests: XCTestCase {
     override func setUp() async throws {
         runner = FakeRunner()
         socketDir = FileManager.default.temporaryDirectory.appendingPathComponent("tunnels-tests-\(UUID().uuidString)")
-        controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller = ForwardController(runner: runner, options: SSHOptions(socketDirectory: socketDir))
         controller.localPortProbe = { _ in false }
         controller.setFavourites([Favourite(name: "postgres", spec: postgres), Favourite(name: "redis", spec: redis)])
     }

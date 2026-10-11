@@ -14,7 +14,7 @@ final class ControllerLifecycleTests: XCTestCase {
     override func setUp() async throws {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("lifecycle")
-        controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller = ForwardController(runner: runner, options: SSHOptions(socketDirectory: socketDir))
         controller.localPortProbe = { _ in false }
         controller.discoveryInterval = 3600
         controller.setFavourites([Favourite(name: "postgres", spec: postgres), Favourite(name: "redis", spec: redis)])
@@ -137,7 +137,7 @@ final class ReconnectorScheduleTests: XCTestCase {
     override func setUp() async throws {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("schedule")
-        controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller = ForwardController(runner: runner, options: SSHOptions(socketDirectory: socketDir))
         controller.localPortProbe = { _ in false }
         controller.setFavourites([Favourite(name: "postgres", spec: postgres)])
         reconnector = Reconnector(controller: controller)

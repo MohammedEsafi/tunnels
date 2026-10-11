@@ -4,14 +4,9 @@ import Darwin
 /// Reads Host aliases out of ~/.ssh/config. Nothing else is parsed: ssh
 /// resolves the alias itself when the master starts.
 public enum SSHConfig {
-    public static var defaultPath: String {
-        if let path = ProcessInfo.processInfo.environment["TUNNELS_SSH_CONFIG"], !path.isEmpty {
-            return path
-        }
-        return NSHomeDirectory() + "/.ssh/config"
-    }
+    public static var defaultPath: String { NSHomeDirectory() + "/.ssh/config" }
 
-    public static func hostAliases(configPath: String = defaultPath) -> [String] {
+    public static func hostAliases(configPath: String) -> [String] {
         var seen: [String] = []
         collect(path: configPath, into: &seen, depth: 0)
         return seen

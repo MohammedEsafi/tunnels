@@ -12,7 +12,7 @@ final class ReconnectorTests: XCTestCase {
     override func setUp() async throws {
         runner = FakeRunner()
         socketDir = makeTemporaryDirectory("recon")
-        controller = ForwardController(runner: runner, socketDirectory: socketDir)
+        controller = ForwardController(runner: runner, options: SSHOptions(socketDirectory: socketDir))
         controller.localPortProbe = { _ in false }
         controller.setFavourites([Favourite(name: "postgres", spec: postgres)])
         reconnector = Reconnector(controller: controller)
