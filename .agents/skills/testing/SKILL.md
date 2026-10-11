@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Verify a change to Tunnels: run the build, tests and lint the way CI does, write a core test with the fake ssh runner and its gate, avoid timing flakes, and run the manual drills that cover the app target. Use before claiming any change works, when adding a test, or when reproducing a bug.
+description: "Verify a change to Tunnels: run the build, tests and lint the way CI does, write a core test with the fake ssh runner and its gate, avoid timing flakes, and run the manual drills that cover the app target. Use before claiming any change works, when adding a test, or when reproducing a bug."
 ---
 
 # Testing Tunnels

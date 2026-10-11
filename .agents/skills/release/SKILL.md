@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a release of Tunnels: what CI runs on every push, how to move the changelog, tag a version and let the release workflow publish the zip, and what users must do with an ad-hoc signed build. Use when asked to release, to tag, or to explain what happens on a push or a tag.
+description: "Cut a release of Tunnels: what CI runs on every push, how to move the changelog, tag a version and let the release workflow publish the zip, and what users must do with an ad-hoc signed build. Use when asked to release, to tag, or to explain what happens on a push or a tag."
 ---
 
 # Releasing Tunnels

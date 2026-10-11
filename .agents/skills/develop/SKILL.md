@@ -1,6 +1,6 @@
 ---
 name: develop
-description: Set up, build and run Tunnels locally: the toolchain, the build and bundle scripts, the Docker lab with two ssh machines, debug logging and the snapshot harness. Use when someone wants to run the app from source, try it against test machines, or capture what the panel shows.
+description: "Set up, build and run Tunnels locally: the toolchain, the build and bundle scripts, the Docker lab with two ssh machines, debug logging and the snapshot harness. Use when someone wants to run the app from source, try it against test machines, or capture what the panel shows."
 ---
 
 # Developing Tunnels locally
