@@ -36,7 +36,7 @@ final class AppModel {
     }
 
     /// Settings live on pages inside the menu, like Control Center sub-pages.
-    enum MenuPage { case main, settings, pinned, logs }
+    enum MenuPage { case main, settings, logs }
     var menuPage: MenuPage = .main
 
     /// One notification when a machine gives up reconnecting.
@@ -56,16 +56,6 @@ final class AppModel {
             reloadFavourites()
         } catch {
             favouritesProblems = [error.localizedDescription]
-        }
-    }
-
-    /// Forget from the Forwards page: closes it too if it is open.
-    func forget(_ favourite: Favourite) {
-        if let forward = controller.forwards.first(where: { $0.spec == favourite.spec }) {
-            removeForward(forward)
-        } else {
-            try? Favourites.remove(favourite.spec, from: favouritesURL)
-            reloadFavourites()
         }
     }
 
@@ -490,13 +480,6 @@ final class AppModel {
             }
             reloadFavourites()
         }
-    }
-
-    /// × on an all-ports host row: stop watching and forget the mode.
-    func forgetAutoHost(_ alias: String) {
-        try? Favourites.removeHost(alias, from: favouritesURL)
-        reloadFavourites()
-        Task { await controller.disableAutoHost(alias) }
     }
 
     func external(on alias: String) -> [ExternalForward] {
