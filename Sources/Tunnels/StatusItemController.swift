@@ -87,31 +87,35 @@ final class StatusItemController {
     }
 
     func open() {
-        if panel == nil {
-            let root = PopoverView().environment(model)
-            panel = MenuPanel(rootView: root, onClose: { [weak self] in self?.statusItem.button?.highlight(false) })
-        }
-        guard let panel, let button = statusItem.button, let buttonWindow = button.window else { return }
+        guard let button = statusItem.button, let buttonWindow = button.window else { return }
         let buttonRect = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
-        panel.ignoreClicksIn = buttonRect
         button.highlight(true)
         model.popoverVisible = true
-        panel.show(below: buttonRect)
+        makePanel().show(below: buttonRect)
     }
 
     func close() {
         panel?.close()
-        model.popoverVisible = false
-        statusItem.button?.highlight(false)
     }
 
     /// Debug: show the panel at a fixed screen point.
     func openForSnapshot(topLeft: NSPoint) {
-        if panel == nil {
-            let root = PopoverView().environment(model)
-            panel = MenuPanel(rootView: root, onClose: {})
-        }
         model.popoverVisible = true
-        panel?.show(topLeft: topLeft)
+        makePanel().show(topLeft: topLeft)
+    }
+
+    private func makePanel() -> MenuPanel {
+        if let panel { return panel }
+        let root = PopoverView().environment(model)
+        let panel = MenuPanel(rootView: root, onClose: { [weak self] in self?.panelDidClose() })
+        self.panel = panel
+        return panel
+    }
+
+    /// Every way the panel goes away ends here: the status item click, Escape,
+    /// a click elsewhere, or another app taking focus.
+    private func panelDidClose() {
+        model.popoverVisible = false
+        statusItem.button?.highlight(false)
     }
 }

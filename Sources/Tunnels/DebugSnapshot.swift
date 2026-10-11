@@ -42,6 +42,13 @@ enum DebugSnapshot {
                     case "on": model.setMachine(fields[1], on: true)
                     case "all": model.enableAllPorts(fields[1])
                     case "closeall": model.closeAll()
+                    case "escape":
+                        // Through the event queue, so the panel's key monitor sees it like a real key press.
+                        if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                                        windowNumber: statusItem.panel?.windowNumber ?? 0, context: nil, characters: "\u{1B}",
+                                                        charactersIgnoringModifiers: "\u{1B}", isARepeat: false, keyCode: 53) {
+                            NSApp.postEvent(event, atStart: false)
+                        }
                     default: break
                     }
                 }

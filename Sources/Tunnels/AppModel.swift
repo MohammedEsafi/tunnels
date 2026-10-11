@@ -30,6 +30,7 @@ final class AppModel {
     /// The popover drives external scanning so `ps` only runs while it is open.
     var popoverVisible = false {
         didSet {
+            DebugLog.log("panel \(popoverVisible ? "shown" : "hidden")")
             popoverVisible ? startExternalScanning() : stopExternalScanning()
             if popoverVisible { reloadHosts() } else { quickOpenVisible = false; quickOpenText = ""; menuPage = .main }
         }
