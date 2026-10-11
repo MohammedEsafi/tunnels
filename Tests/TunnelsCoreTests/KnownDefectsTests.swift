@@ -124,7 +124,7 @@ final class KnownDefectsTests: XCTestCase {
         controller.enableAutoHost("gpu-box")
         await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
         let reconnector = Reconnector(controller: controller)
-        reconnector.delays = [0.2]
+        reconnector.delays = [1.0]  // long enough for the dropped state to be seen on a slow runner
 
         runner.runningMasters.first?.simulateExit(code: 255)
         await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .dropped }
