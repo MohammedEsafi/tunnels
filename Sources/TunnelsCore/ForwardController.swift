@@ -448,6 +448,11 @@ public final class ForwardController {
         do {
             try await master.addForward(forward.spec)
             update(forward.id) { $0.state = .active }
+            // Switched off while ssh was adding it: take it straight down again.
+            guard let added = forwards.first(where: { $0.id == forward.id }), added.desiredOn else {
+                await close(forward.withState(.active))
+                return
+            }
             appendLog(forward.spec.machine, "forward \(forward.spec.sshArgument) open")
             if !forward.isDiscovered { await probe(alias: forward.spec.machine) }
         } catch {
@@ -514,7 +519,8 @@ public final class ForwardController {
 
     private func close(_ forward: Forward) async {
         let alias = forward.spec.machine
-        if let master = masters[alias], forward.state == .active {
+        // A forward with nothing listening behind it is still bound locally.
+        if let master = masters[alias], forward.state == .active || forward.state == .noService {
             try? await master.cancelForward(forward.spec)
         }
         update(forward.id) { $0.state = .off }

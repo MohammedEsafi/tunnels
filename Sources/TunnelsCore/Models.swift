@@ -82,6 +82,14 @@ public struct Forward: Identifiable, Hashable, Sendable {
     }
 }
 
+extension Forward {
+    func withState(_ state: ForwardState) -> Forward {
+        var copy = self
+        copy.state = state
+        return copy
+    }
+}
+
 /// A forward found in an ssh process the app does not own.
 public struct ExternalForward: Identifiable, Hashable, Sendable {
     public var pid: Int32
