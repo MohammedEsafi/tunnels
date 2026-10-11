@@ -91,8 +91,10 @@ Problems in the file are shown at the top of the popover with an Open button.
   have no name. Switch a port off (or ×) to say "not this one"; that is kept
   across reconnects and relaunches. Switching the host off stops watching;
   switching it on again asks whether you want all ports or only the pinned
-  ones. Answering "All ports" forgets the "not this one" choices, and
-  "Pinned only" ends all-ports mode for that host.
+  ones. Answering "All ports" forgets the "not this one" choices.
+  Answering "Pinned only" freezes what the host had: the ports that were
+  open when you switched it off, minus the ones you closed, become ordinary
+  pinned forwards, and watching stops for good.
 - **A forward with nothing behind it.** A pinned forward whose remote port has
   no listener shows an orange circle with the tooltip "Nothing listening on
   host:port". It is open and will work the moment something starts there;
