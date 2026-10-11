@@ -1,7 +1,7 @@
 # Contributing
 
 The how-to lives in the repository's agent skills under
-[`.agents/skills/`](../.agents/skills), one `SKILL.md` per task. Any agent
+[`.agents/skills/`](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills), one `SKILL.md` per task. Any agent
 that reads that folder can use them (Claude Code does, through the
 `.claude/skills` link); people can read the files directly. `contribute` has the steps, the commit
 format and the house rules; `testing` says how to verify a change;

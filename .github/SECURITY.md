@@ -7,4 +7,4 @@ new release with a note in `CHANGELOG.md`.
 
 How the app handles trust, and what to check in a security-sensitive change,
 is in the `security` skill:
-[`.agents/skills/security/SKILL.md`](../.agents/skills/security/SKILL.md).
+[`.agents/skills/security/SKILL.md`](https://github.com/MohammedEsafi/tunnels/blob/main/.agents/skills/security/SKILL.md).
