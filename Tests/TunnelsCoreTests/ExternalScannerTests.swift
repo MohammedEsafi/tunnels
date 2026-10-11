@@ -30,6 +30,18 @@ final class ExternalScannerTests: XCTestCase {
         XCTAssertEqual(found[3].spec, ForwardSpec(machine: "db", localPort: 3306))
     }
 
+    func testStaleMastersAreOursButNotOurChildren() {
+        let dir = URL(fileURLWithPath: "/Users/me/Library/Application Support/Tunnels/sockets")
+        let ps = """
+          100   501     1 /usr/bin/ssh -N -M -S /Users/me/Library/Application Support/Tunnels/sockets/abc -o ControlPersist=no box-a
+          101   501   900 /usr/bin/ssh -N -M -S /Users/me/Library/Application Support/Tunnels/sockets/def -o ControlPersist=no box-b
+          102   501     1 /usr/bin/ssh -N -M -S /tmp/other-sockets/abc box-c
+          103   502     1 /usr/bin/ssh -N -M -S /Users/me/Library/Application Support/Tunnels/sockets/abc box-a
+          104   501     1 ssh -S /Users/me/Library/Application Support/Tunnels/sockets/abc -O check box-a
+        """
+        XCTAssertEqual(ExternalScanner.staleMasters(in: ps, socketDirectory: dir, currentUID: 501, ownPID: 900), [100])
+    }
+
     func testTokenizerHonoursQuotes() {
         XCTAssertEqual(ExternalScanner.tokenize("ssh -o 'ProxyCommand nc %h %p' host"), ["ssh", "-o", "ProxyCommand nc %h %p", "host"])
     }

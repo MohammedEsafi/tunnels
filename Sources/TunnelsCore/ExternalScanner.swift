@@ -139,4 +139,30 @@ public enum ExternalScanner {
     public static func stop(pid: Int32) -> Bool {
         kill(pid, SIGTERM) == 0
     }
+
+    /// ssh masters started by an earlier run of the app (they use our socket
+    /// directory) that are no longer children of anything of ours. A crash or
+    /// a force quit leaves them behind, still holding their local ports.
+    public static func staleMasters(runner: any ProcessRunning, socketDirectory: URL, currentUID: uid_t = getuid()) async -> [Int32] {
+        guard let result = try? await runner.run("/bin/ps", arguments: ["-axo", "pid=,uid=,ppid=,command="], timeout: 10), result.succeeded else {
+            return []
+        }
+        return staleMasters(in: result.stdout, socketDirectory: socketDirectory, currentUID: currentUID, ownPID: getpid())
+    }
+
+    static func staleMasters(in output: String, socketDirectory: URL, currentUID: uid_t, ownPID: Int32) -> [Int32] {
+        let marker = " -S " + socketDirectory.path + "/"
+        var found: [Int32] = []
+        for line in output.split(separator: "\n") {
+            let columns = line.trimmingCharacters(in: .whitespaces).split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
+            guard columns.count == 4,
+                  let pid = Int32(columns[0]),
+                  let uid = UInt32(columns[1]), uid == currentUID,
+                  let ppid = Int32(columns[2]) else { continue }
+            let command = String(columns[3])
+            guard command.contains(" -N -M"), command.contains(marker), ppid != ownPID else { continue }
+            found.append(pid)
+        }
+        return found
+    }
 }

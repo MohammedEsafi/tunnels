@@ -119,7 +119,24 @@ final class AppModel {
             self?.reconnector.systemDidChange()
         }
         startHealthChecks()
-        Task { await restoreState() }
+        Task {
+            await sweepStaleMasters()
+            await restoreState()
+        }
+    }
+
+    /// Masters left behind by a crash or force quit would hold our ports.
+    private func sweepStaleMasters() async {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Tunnels/sockets")
+        let stale = await ExternalScanner.staleMasters(runner: runner, socketDirectory: support)
+        for pid in stale {
+            ExternalScanner.stop(pid: pid)
+            DebugLog.log("stopped stale ssh master \(pid)")
+        }
+        if !stale.isEmpty {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+        }
     }
 
     // MARK: Favourites and hosts
