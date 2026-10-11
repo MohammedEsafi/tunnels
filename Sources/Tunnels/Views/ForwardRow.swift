@@ -11,7 +11,6 @@ struct ForwardRow: View {
     @State private var hovering = false
     @State private var editing: Editing?
     @State private var draft = ""
-    @FocusState private var focused: Bool
 
     enum Editing { case name, port }
 
@@ -20,7 +19,7 @@ struct ForwardRow: View {
             leadingIcon
 
             if editing == .name {
-                inlineField(placeholder: forward.name)
+                inlineField(placeholder: forward.name).layoutPriority(1)
             } else {
                 Button {
                     if forward.isDiscovered { model.excludePort(forward) } else { model.setForward(forward, on: !forward.desiredOn) }
@@ -40,12 +39,15 @@ struct ForwardRow: View {
             }
 
             if editing == .port {
-                // The switch steps aside so the field and the mapping fit on one line.
+                // The switch steps aside so the field and the mapping fit on one
+                // line; the name truncates before these do.
                 HStack(spacing: 5) {
                     inlineField(placeholder: String(forward.spec.localPort)).frame(width: 66)
                     Text("→").font(.system(size: 12)).foregroundStyle(.tertiary)
                     Text(String(forward.spec.remotePort)).font(.system(size: 12)).foregroundStyle(.secondary).monospacedDigit()
                 }
+                .fixedSize()
+                .layoutPriority(1)
             } else if !portIsName || forward.spec.localPort != forward.spec.remotePort {
                 PortColumn(spec: forward.spec)
             }
@@ -120,29 +122,14 @@ struct ForwardRow: View {
     private func begin(_ what: Editing, with text: String) {
         draft = text
         editing = what
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            focused = true
-            // Pre-select the current value so typing replaces it.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
-            }
-        }
     }
 
     private func inlineField(placeholder: String) -> some View {
-        TextField(placeholder, text: $draft)
-            .textFieldStyle(.plain)
-            .font(.system(size: 13))
-            .monospacedDigit()
-            .focused($focused)
-            .onSubmit(commit)
-            .onExitCommand { editing = nil }
-            .onChange(of: focused) { _, isFocused in if !isFocused && editing != nil { commit() } }
-            .padding(.horizontal, 5)
+        InlineTextField(text: $draft, placeholder: placeholder, onCommit: commit, onCancel: { editing = nil })
             .frame(height: 22)
+            .padding(.horizontal, 5)
             .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(0.25)))
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.accentColor))
-            .focusEffectDisabled()
     }
 
     private func commit() {
