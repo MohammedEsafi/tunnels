@@ -9,6 +9,11 @@ extension ForwardController {
         if let offset { offsets[alias] = offset }
         guard !autoHosts.contains(alias) else { return }
         autoHosts.insert(alias)
+        // A machine the reconnector gave up on starts afresh here; scans
+        // would otherwise keep deferring to a reconnector that is done.
+        if case .failed = machineState(alias), masters[alias] == nil, startingMasters[alias] == nil {
+            machineStates[alias] = .disconnected
+        }
         discoveryLoops[alias] = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.scan(alias)
@@ -27,9 +32,11 @@ extension ForwardController {
             await close(forward)
             forwards.removeAll { $0.id == forward.id }
         }
-        if !forwards(on: alias).contains(where: { $0.desiredOn }), let master = masters[alias] {
-            await master.stop()
-            masters[alias] = nil
+        if !forwards(on: alias).contains(where: { $0.desiredOn }) {
+            if let master = masters[alias] {
+                await master.stop()
+                masters[alias] = nil
+            }
             machineStates[alias] = .disconnected
         }
     }
@@ -52,9 +59,11 @@ extension ForwardController {
         guard autoHosts.contains(alias), !scanning.contains(alias) else { return }
         // After a drop the reconnector owns the retries, with its backoff and
         // its give-up; scanning again here would race it and make "is down"
-        // untrue. The next scan runs once it has reconnected.
+        // untrue. While an attempt is connecting, joining it would report its
+        // failure a second time and restart the backoff. The next scan runs
+        // once the machine is connected.
         switch machineState(alias) {
-        case .dropped, .failed: return
+        case .dropped, .failed, .connecting: return
         default: break
         }
         scanning.insert(alias)

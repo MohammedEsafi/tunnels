@@ -152,6 +152,44 @@ final class KnownDefectsTests: XCTestCase {
         XCTAssertEqual(runner.launches.count, 3, "a failed machine is left to a manual retry")
     }
 
+    // Review finding 1: a scan tick during a reconnector attempt joined the same
+    // start, saw the same error and rescheduled the loop at attempt 1 forever.
+    func testAWatchedUnreachableMachineGivesUpEvenWhileScansKeepTicking() async {
+        controller.discoveryInterval = 0.05
+        let reconnector = Reconnector(controller: controller)
+        reconnector.delays = [0.02]
+        reconnector.budget = 2
+        var gaveUp: String?
+        reconnector.onGaveUp = { alias, _ in gaveUp = alias }
+        runner.masterExitsImmediately = (255, "ssh: connect to host gpu-box port 22: Connection refused")
+
+        controller.enableAutoHost("gpu-box")
+        await waitUntil(timeout: 3) { gaveUp != nil }
+
+        XCTAssertEqual(runner.launches.count, 3, "the first try plus two attempts; scans must not restart the count")
+        XCTAssertEqual(controller.machineState("gpu-box"), .failed(reason: "Host unreachable"))
+    }
+
+    // Review finding 3: after the reconnector gave up, All Ports again did nothing
+    // because the machine stayed .failed and scans skip failed machines.
+    func testAllPortsAgainAfterGivingUpReconnects() async {
+        let reconnector = Reconnector(controller: controller)
+        reconnector.delays = [0.02]
+        reconnector.budget = 1
+        runner.masterExitsImmediately = (255, "Connection refused")
+        controller.enableAutoHost("gpu-box")
+        await waitUntil { if case .failed = self.controller.machineState("gpu-box") { return true } else { return false } }
+
+        runner.masterExitsImmediately = nil
+        runner.script = { args in args.contains("--") ? ProcessResult(exitCode: 0, stdout: self.listing([3000])) : nil }
+        // What "All Ports" from the machine's menu does.
+        await controller.disableAutoHost("gpu-box")
+        controller.enableAutoHost("gpu-box")
+
+        await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
+        XCTAssertEqual(controller.machineState("gpu-box"), .connected)
+    }
+
     // P1-5
     func testRemoteRefusalIsNotReportedAsLocalPortInUse() {
         XCTAssertEqual(SSHErrorText.humanize("remote port forwarding failed for listen port 80"), "Remote end refused the forward")
