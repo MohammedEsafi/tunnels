@@ -157,7 +157,12 @@ public actor SSHMaster {
                 throw SSHError.masterExited(lastOutput.isEmpty ? "ssh exited with status \(code)" : lastOutput)
             }
             if await check() { return }
-            try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            do {
+                try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            } catch {
+                launched.terminate()
+                throw error
+            }
         }
         launched.terminate()
         throw SSHError.timeout
