@@ -6,6 +6,8 @@ date. Versions follow [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-10-12
+
 ### Changed
 - In all-ports mode only the ports whose local number is taken move to the
   offset; the rest keep their own numbers. Moved ports are remembered on the
