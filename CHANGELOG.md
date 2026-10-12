@@ -6,6 +6,13 @@ date. Versions follow [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- All-ports mode on a macOS machine found no ports: the listing stopped at
+  `netstat -tln`, which a Mac accepts but answers with established
+  connections only. The listing now goes straight to `netstat -an` where
+  `ss` and `/proc/net/tcp` are absent. This also fixes the "nothing listening"
+  check for pinned forwards on Mac machines.
+
 ## [0.1.0] — 2026-10-12
 
 First release.
