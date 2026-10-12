@@ -31,15 +31,15 @@ final class PortDiscoveryTests: XCTestCase {
     func testParsesMacOSNetstatOutput() {
         // netstat -an on a Mac: dots before the port, LISTEN in a "(state)" column.
         let netstat = """
-        Active Internet connections (including servers)
-        Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
-        tcp4       0      0  192.168.1.108.52623    13.224.83.88.443       ESTABLISHED
-        tcp4       0      0  *.3302                 *.*                    LISTEN
-        tcp46      0      0  *.53                   *.*                    LISTEN
-        tcp4       0      0  127.0.0.1.49435        *.*                    LISTEN
-        tcp6       0      0  *.5000                 *.*                    LISTEN
-        tcp4       0      0  *.5000                 *.*                    LISTEN
-        udp4       0      0  *.3722                 *.*
+            Active Internet connections (including servers)
+            Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)
+            tcp4       0      0  192.168.1.108.52623    13.224.83.88.443       ESTABLISHED
+            tcp4       0      0  *.3302                 *.*                    LISTEN
+            tcp46      0      0  *.53                   *.*                    LISTEN
+            tcp4       0      0  127.0.0.1.49435        *.*                    LISTEN
+            tcp6       0      0  *.5000                 *.*                    LISTEN
+            tcp4       0      0  *.5000                 *.*                    LISTEN
+            udp4       0      0  *.3722                 *.*
         """
         XCTAssertEqual(PortDiscovery.parse(netstat), [3302, 5000])
         XCTAssertEqual(PortDiscovery.listeners(netstat), [53, 3302, 5000, 49435])
