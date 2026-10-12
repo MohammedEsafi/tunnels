@@ -26,7 +26,22 @@ jobs:
       - name: Zip
         run: ditto -c -k --keepParent build/Tunnels.app "Tunnels-${GITHUB_REF_NAME}.zip"
 
+      - name: Release notes from the changelog
+        # The "## [X.Y.Z]" section of CHANGELOG.md, up to the next version
+        # heading. A tag without its section fails here, before publishing.
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "CHANGELOG.md has no section for ${GITHUB_REF_NAME#v}; add it before tagging" >&2
+            exit 1
+          fi
+          cat notes.md
+
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "Tunnels-${GITHUB_REF_NAME}.zip" --title "Tunnels $GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" "Tunnels-${GITHUB_REF_NAME}.zip" --title "Tunnels $GITHUB_REF_NAME" --notes-file notes.md
