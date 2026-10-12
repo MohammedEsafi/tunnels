@@ -30,8 +30,12 @@ public final class ForwardController {
     /// Per-machine offset, assigned the first time one of its discovered
     /// ports is taken locally: 10000 for the first machine, 20000 next.
     public internal(set) var offsets: [String: Int] = [:]
-    /// Fired once when a machine gets its offset.
-    public var onOffsetAssigned: (@MainActor (String, Int) -> Void)?
+    /// Discovered remote ports that sit on the machine's offset because their
+    /// plain local number was taken. They stay there until a switch-on by hand.
+    public internal(set) var movedPorts: [String: Set<Int>] = [:]
+    /// Fired after a pass that moved ports: the machine, the ports moved in
+    /// that pass (remote numbers) and the offset they use.
+    public var onPortsMoved: (@MainActor (String, Set<Int>, Int) -> Void)?
     /// A pinned forward was moved to another local port because its own was
     /// taken: old spec, new spec. The app rewrites the favourites file.
     public var onForwardMoved: (@MainActor (ForwardSpec, ForwardSpec) -> Void)?
@@ -133,13 +137,15 @@ public final class ForwardController {
 
     /// The master switch: every forward on the machine on or off. Switching
     /// on by hand means "start from the best numbers available": the offset
-    /// is dropped and forwards the app had moved try their plain number.
+    /// and the moved set are dropped, and forwards the app had moved try
+    /// their plain number.
     public func setMachine(alias: String, on: Bool) async {
         if !on, autoHosts.contains(alias) {
             await disableAutoHost(alias)
         }
         if on {
             offsets[alias] = nil
+            movedPorts[alias] = nil
             tryPlainOnce.insert(alias)
             for index in forwards.indices where forwards[index].spec.machine == alias {
                 forwards[index].desiredOn = true

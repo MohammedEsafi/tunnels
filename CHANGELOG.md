@@ -6,6 +6,13 @@ date. Versions follow [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- In all-ports mode only the ports whose local number is taken move to the
+  offset; the rest keep their own numbers. Moved ports are remembered on the
+  machine's entry (`moved = [...]`) so reconnects and relaunches keep them,
+  and the notification names the ports that moved. Before, one taken port
+  moved every port on the machine.
+
 ## [0.1.1] — 2026-10-12
 
 ### Fixed

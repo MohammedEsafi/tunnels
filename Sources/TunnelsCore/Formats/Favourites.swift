@@ -18,13 +18,16 @@ public struct Favourite: Equatable, Hashable, Sendable {
 public struct AutoHost: Equatable, Hashable, Sendable {
     public var name: String
     public var excluded: Set<Int>
-    /// Added to a remote port when its plain local number was taken.
+    /// Added to a moved port's remote number to make its local one.
     public var offset: Int?
+    /// Remote ports on the offset because their plain local number was taken.
+    public var moved: Set<Int>
 
-    public init(name: String, excluded: Set<Int> = [], offset: Int? = nil) {
+    public init(name: String, excluded: Set<Int> = [], offset: Int? = nil, moved: Set<Int> = []) {
         self.name = name
         self.excluded = excluded
         self.offset = offset
+        self.moved = moved
     }
 }
 
@@ -93,12 +96,11 @@ public enum Favourites {
             guard let name = table["name"]?.string?.trimmingCharacters(in: .whitespaces), !name.isEmpty,
                 table["all_ports"]?.boolean ?? true
             else { return nil }
-            let excluded = Set(
-                (table["exclude"].flatMap { value -> [Int]? in
-                    if case .array(let items) = value { return items.compactMap(\.integer) }
-                    return nil
-                }) ?? [])
-            return AutoHost(name: name, excluded: excluded, offset: table["offset"]?.integer)
+            func ports(_ key: String) -> Set<Int> {
+                guard case .array(let items)? = table[key] else { return [] }
+                return Set(items.compactMap(\.integer))
+            }
+            return AutoHost(name: name, excluded: ports("exclude"), offset: table["offset"]?.integer, moved: ports("moved"))
         }
     }
 

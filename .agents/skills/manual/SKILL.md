@@ -92,19 +92,23 @@ go. The machine shows a small layers glyph; its rows have no name.
 ### The offset rule
 
 1. Only one forward can be `localhost:8080`. When a discovered port is already
-   taken on this Mac, by another machine's forward or by any local program,
-   the machine gets an offset: +10000 for the first such machine, +20000 for
-   the next.
-2. From then on every discovered port on that machine lands on remote plus
-   offset (`18080 → 8080`), so the mapping never depends on connection order.
-   One notification explains this the first time.
-3. The offset is kept on the machine's `[[host]]` entry (`offset = 10000`).
-   All Ports from the menu clears it.
-4. A pinned forward whose number is taken moves the same way; the file
-   records `moved = true`.
-5. Switching a machine off and on by hand drops the offset and lets the moved
-   forwards try their plain numbers again, moving back only what is still
-   taken. Automatic reconnects and relaunches keep the numbers.
+   taken on this Mac, by another machine's forward or by any local program
+   (AirPlay holds 5000 and 7000 on most Macs), that port moves: the machine
+   gets an offset, +10000 for the first machine that needs one, +20000 for
+   the next, and the port lands on remote plus offset (`15000 → 5000`).
+2. Only the ports that clash move. The rest keep their own numbers, so the
+   same machine can show `3302` next to `15000 → 5000`.
+3. A moved port stays moved, across reconnects and relaunches, even if its
+   plain number becomes free; the moved ports and the offset are kept on the
+   machine's `[[host]]` entry (`moved = [5000, 7000]`, `offset = 10000`).
+   One notification names the ports when they move.
+4. A pinned forward whose number is taken moves the same way, with the same
+   offset; its entry records `moved = true`.
+5. Switching a machine off and on by hand means "start from the best numbers
+   available": the moved set is dropped, every port tries its plain number
+   again, and only the ones still taken move. All Ports from the menu does
+   the same and also forgets the exclusions. Automatic reconnects and
+   relaunches keep the numbers.
 
 ## Reconnection and notifications
 
@@ -147,7 +151,8 @@ remote_host = "localhost"  # as seen from the machine
 name = "gpu-box"
 all_ports = true
 exclude = [5432]
-offset = 10000
+offset = 10000             # moved ports use remote + offset
+moved = [5000, 7000]
 ```
 
 The parser is a small TOML subset: strings, integers, booleans, arrays of

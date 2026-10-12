@@ -13,33 +13,34 @@ extension AppModel {
 
     /// From the suggestion or the host's menu: watch every port on the machine.
     /// Saying "all ports" explicitly is a fresh start for that machine: it
-    /// forgets "not this one" choices and any offset. Both survive automatic
-    /// reconnects and relaunches otherwise.
+    /// forgets "not this one" choices and the moved ports. Both survive
+    /// automatic reconnects and relaunches otherwise.
     func enableAllPorts(_ alias: String) {
         if !isAutoHost(alias) {
             editFavourites("addHost") { try Favourites.addHost(AutoHost(name: alias), to: self.favouritesURL) }
         } else {
             editFavourites("setExcluded") { try Favourites.setExcluded([], forHost: alias, in: self.favouritesURL) }
             editFavourites("setOffset") { try Favourites.setOffset(nil, forHost: alias, in: self.favouritesURL) }
+            editFavourites("setMoved") { try Favourites.setMoved([], forHost: alias, in: self.favouritesURL) }
         }
         reloadFavourites()
-        // A real restart: drop what discovery had, forget the offset, scan afresh.
+        // A real restart: drop what discovery had, forget the moves, scan afresh.
         Task {
             await controller.disableAutoHost(alias)
-            controller.clearOffset(alias)
-            controller.enableAutoHost(alias, excluded: [], offset: nil)
+            controller.forgetMoves(alias)
+            controller.enableAutoHost(alias, excluded: [], offset: nil, moved: [])
             if controller.forwards(on: alias).contains(where: { !$0.isDiscovered }) {
                 await controller.setMachine(alias: alias, on: true)
             }
         }
     }
 
-    /// At launch: resume watching with the exclusions and offset on file, and
-    /// reopen pinned forwards on the same machine as they were (no "try the
-    /// plain number" pass; that is for a switch-on by hand).
+    /// At launch: resume watching with the exclusions, offset and moved ports
+    /// on file, and reopen pinned forwards on the same machine as they were
+    /// (no "try the plain number" pass; that is for a switch-on by hand).
     func resumeAllPorts(_ alias: String) {
         let host = autoHosts.first { $0.name == alias }
-        controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: host?.offset)
+        controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: host?.offset, moved: host?.moved ?? [])
     }
 
     /// Pinned Ports Only from the host's menu: freeze what all-ports mode had found.
@@ -48,10 +49,17 @@ extension AppModel {
     func enablePinnedOnly(_ alias: String) {
         let pinnedAlready = Set(favourites.filter { $0.spec.machine == alias }.map(\.spec.localPort))
         let frozen = (controller.lastDiscovered[alias] ?? []).subtracting(pinnedAlready)
+        let moved = controller.movedPorts[alias] ?? []
+        let offset = controller.offsets[alias] ?? 0
         for port in frozen.sorted() {
+            // A port on the offset is pinned on the offset, as the app moved it.
+            let local = moved.contains(port) ? port + offset : port
             editFavourites("add") {
                 try Favourites.add(
-                    Favourite(name: String(port), spec: ForwardSpec(machine: alias, localPort: port)), to: self.favouritesURL)
+                    Favourite(
+                        name: String(port), spec: ForwardSpec(machine: alias, localPort: local, remotePort: port), movedByApp: local != port
+                    ),
+                    to: self.favouritesURL)
             }
         }
         editFavourites("removeHost") { try Favourites.removeHost(alias, from: self.favouritesURL) }
@@ -63,15 +71,16 @@ extension AppModel {
     }
 
     /// Switch on a host: an all-ports host resumes watching with its
-    /// exclusions but drops its offset, so plain numbers get another try; any
-    /// other host just reopens its pinned forwards. The mode itself is changed
-    /// from the host's right-click menu.
+    /// exclusions but drops its moved ports, so plain numbers get another try;
+    /// any other host just reopens its pinned forwards. The mode itself is
+    /// changed from the host's right-click menu.
     func switchOn(_ alias: String) {
         if isAutoHost(alias) {
             let host = autoHosts.first { $0.name == alias }
             editFavourites("setOffset") { try Favourites.setOffset(nil, forHost: alias, in: self.favouritesURL) }
+            editFavourites("setMoved") { try Favourites.setMoved([], forHost: alias, in: self.favouritesURL) }
             reloadFavourites()
-            controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: nil)
+            controller.enableAutoHost(alias, excluded: host?.excluded ?? [], offset: nil, moved: [])
         }
         Task { await controller.setMachine(alias: alias, on: true) }
     }

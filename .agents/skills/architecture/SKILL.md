@@ -97,10 +97,15 @@ after the budget, `any → disconnected` when switched off. Forward states:
   on macOS that succeeds beside a wildcard listener, which would let a remote
   machine take over a local service. Keep the probe in front of every
   discovered bind.
-- The first taken port gives the machine an offset (+10000, +20000, …); from
-  then on every discovered port on it uses the offset. A pinned forward whose
-  number is taken moves the same way (`moved = true`); a manual switch-on
-  drops the offset and lets such forwards try plain numbers again.
+- Only a port whose plain number is taken moves, to remote + the machine's
+  offset (+10000 for the first machine that needs one, +20000 for the next);
+  the others stay plain. The moved ports are remembered (`movedPorts`, and
+  `moved = [...]` on the `[[host]]` entry) so reconnects and relaunches keep
+  them even once the plain number is free; each scan puts every discovered
+  row on the offset exactly when its port is in that set. A pinned forward
+  whose number is taken moves the same way (`moved = true`). A manual
+  switch-on and All Ports from the menu drop the moved set and let every
+  port try its plain number again.
 
 ## Outside forwards, persistence, lifecycle
 

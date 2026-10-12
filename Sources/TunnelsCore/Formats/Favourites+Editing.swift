@@ -107,6 +107,14 @@ extension Favourites {
     }
 
     @discardableResult
+    public static func setMoved(_ moved: Set<Int>, forHost name: String, in url: URL = defaultURL) throws -> Bool {
+        try editBlock("host", in: url, matching: { $0["name"]?.string == name }) { lines in
+            replaceKey(
+                "moved", in: lines, with: moved.isEmpty ? nil : "moved = [\(moved.sorted().map(String.init).joined(separator: ", "))]")
+        }
+    }
+
+    @discardableResult
     public static func setOffset(_ offset: Int?, forHost name: String, in url: URL = defaultURL) throws -> Bool {
         try editBlock("host", in: url, matching: { $0["name"]?.string == name }) { lines in
             replaceKey("offset", in: lines, with: offset.map { "offset = \($0)" })
