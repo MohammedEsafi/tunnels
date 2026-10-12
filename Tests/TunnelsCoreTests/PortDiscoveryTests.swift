@@ -40,7 +40,7 @@ final class PortDiscoveryTests: XCTestCase {
             tcp6       0      0  *.5000                 *.*                    LISTEN
             tcp4       0      0  *.5000                 *.*                    LISTEN
             udp4       0      0  *.3722                 *.*
-        """
+            """
         XCTAssertEqual(PortDiscovery.parse(netstat), [3302, 5000])
         XCTAssertEqual(PortDiscovery.listeners(netstat), [53, 3302, 5000, 49435])
     }
