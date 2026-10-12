@@ -109,7 +109,7 @@ final class ControllerLifecycleTests: XCTestCase {
 
     func testExclusionsUseTheRemoteNumberEvenWhenTheLocalOneIsOffset() async {
         runner.script = { args in args.contains("--") ? ProcessResult(exitCode: 0, stdout: "LISTEN 0 1 127.0.0.1:8080 0.0.0.0:*") : nil }
-        controller.enableAutoHost("gpu-box", offset: 10000)
+        controller.enableAutoHost("gpu-box", offset: 10000, moved: [8080])
         await waitUntil { self.controller.forwards(on: "gpu-box").first?.state == .active }
         XCTAssertEqual(controller.forwards(on: "gpu-box").first?.spec, ForwardSpec(machine: "gpu-box", localPort: 18080, remotePort: 8080))
 
@@ -135,9 +135,9 @@ final class ControllerLifecycleTests: XCTestCase {
         XCTAssertEqual(
             specs,
             [
-                ForwardSpec(machine: "gpu-box", localPort: 13000, remotePort: 3000),
+                ForwardSpec(machine: "gpu-box", localPort: 3000),
                 ForwardSpec(machine: "gpu-box", localPort: 15432, remotePort: 5432),
-            ], "the whole machine moves to the offset; 5432 is never bound beside the local service")
+            ], "only 5432 moves, and it is never bound beside the local service; 3000 keeps its number")
         XCTAssertFalse(runner.calls(containing: "forward").contains { $0.arguments.contains("127.0.0.1:5432:localhost:5432") })
     }
 

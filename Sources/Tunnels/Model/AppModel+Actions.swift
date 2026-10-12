@@ -62,6 +62,21 @@ extension AppModel {
             try SMAppService.mainApp.unregister()
         }
     }
+    /// "5000 is taken on this Mac, so it is 15000." or "5000 and 7000 are
+    /// taken on this Mac, so they are 15000 and 17000."
+    static func describeMoves(_ ports: Set<Int>, offset: Int) -> String {
+        let sorted = ports.sorted()
+        func list(_ numbers: [Int]) -> String {
+            let words = numbers.map(String.init)
+            guard words.count > 1 else { return words.first ?? "" }
+            return words.dropLast().joined(separator: ", ") + " and " + words.last!
+        }
+        if sorted.count == 1, let port = sorted.first {
+            return "\(port) is taken on this Mac, so it is \(port + offset)."
+        }
+        return "\(list(sorted)) are taken on this Mac, so they are \(list(sorted.map { $0 + offset }))."
+    }
+
     /// "45 seconds", "3 minutes", "2 hours".
     static func describe(_ seconds: TimeInterval) -> String {
         let s = Int(seconds.rounded())

@@ -1,12 +1,15 @@
 import Foundation
 
-/// All-ports mode: watch a machine, forward every listener it has, and keep
-/// every discovered port on one offset when plain numbers clash.
+/// All-ports mode: watch a machine and forward every listener it has. A port
+/// whose plain local number is taken moves to the machine's offset and stays
+/// there; the others keep their own numbers.
 extension ForwardController {
     /// Watch a machine and forward every listener it has, except `excluded`.
-    public func enableAutoHost(_ alias: String, excluded: Set<Int> = [], offset: Int? = nil) {
+    /// `moved` are the ports already on the offset from an earlier run.
+    public func enableAutoHost(_ alias: String, excluded: Set<Int> = [], offset: Int? = nil, moved: Set<Int> = []) {
         autoExcluded[alias] = excluded
         if let offset { offsets[alias] = offset }
+        movedPorts[alias] = moved
         guard !autoHosts.contains(alias) else { return }
         autoHosts.insert(alias)
         // A machine the reconnector gave up on starts afresh here; scans
@@ -99,55 +102,66 @@ extension ForwardController {
             await close(forward)
             forwards.removeAll { $0.id == forward.id }
         }
+        var newlyMoved: Set<Int> = []
         for port in wanted.sorted() where !current.contains(where: { $0.spec.remotePort == port }) {
             guard autoHosts.contains(alias) else { return }
-            await openDiscovered(port, on: alias)
+            if await openDiscovered(port, on: alias) { newlyMoved.insert(port) }
         }
-        // Enforce the rule every time, whatever history produced: with an
-        // offset, no discovered row may sit on a plain number; and a failed
+        // Enforce the rule every time, whatever history produced: a row is on
+        // the offset exactly when its port is in the moved set; and a failed
         // row gets another go (its local port may have freed up).
         for forward in forwards(on: alias) where forward.isDiscovered {
             guard autoHosts.contains(alias) else { return }
-            let wrongNumber = offsets[alias] != nil && forward.spec.localPort == forward.spec.remotePort
+            let onOffset = forward.spec.localPort != forward.spec.remotePort
+            let shouldBe = movedPorts[alias, default: []].contains(forward.spec.remotePort)
             var failed = false
             if case .error = forward.state { failed = true }
-            if wrongNumber || failed {
+            if onOffset != shouldBe || failed {
                 await close(forward)
                 forwards.removeAll { $0.id == forward.id }
-                await openDiscovered(forward.spec.remotePort, on: alias)
+                if await openDiscovered(forward.spec.remotePort, on: alias) { newlyMoved.insert(forward.spec.remotePort) }
             }
+        }
+        if !newlyMoved.isEmpty, let offset = offsets[alias] {
+            onPortsMoved?(alias, newlyMoved, offset)
         }
     }
 
-    /// Open a discovered port. A machine without an offset tries the plain
-    /// number; the first clash gives the machine an offset, after which every
-    /// discovered port on it uses that offset, so the mapping never depends
-    /// on which machine connected first.
-    func openDiscovered(_ port: Int, on alias: String) async {
-        if offsets[alias] == nil {
+    /// Open a discovered port: on its plain number when that is free, else on
+    /// the machine's offset. A port that moved stays moved until a switch-on
+    /// by hand. Returns true when this call moved the port.
+    @discardableResult
+    func openDiscovered(_ port: Int, on alias: String) async -> Bool {
+        if movedPorts[alias, default: []].contains(port) {
+            await openMoved(port, on: alias, offset: ensureOffset(alias))
+            return false
+        }
+        if !isLocalPortTaken(port) {
             let plain = Forward(
                 spec: ForwardSpec(machine: alias, localPort: port), name: String(port), isFavourite: false, isDiscovered: true,
                 desiredOn: true)
-            if !isLocalPortTaken(port) {
-                forwards.append(plain)
-                await open(plain)
-                guard case .error(let reason) = forwards.first(where: { $0.id == plain.id })?.state,
-                    reason == "Local port in use"
-                else { return }
-                forwards.removeAll { $0.id == plain.id }
-            }
-            let offset = nextOffset()
-            offsets[alias] = offset
-            appendLog(alias, "local ports taken: using +\(offset) for this machine")
-            // Ports already open on plain numbers move too, so the rule is whole.
-            for existing in forwards(on: alias) where existing.isDiscovered && existing.spec.localPort == existing.spec.remotePort {
-                await close(existing)
-                forwards.removeAll { $0.id == existing.id }
-                await openMoved(existing.spec.remotePort, on: alias, offset: offset)
-            }
-            onOffsetAssigned?(alias, offset)
+            forwards.append(plain)
+            await open(plain)
+            guard case .error(let reason) = forwards.first(where: { $0.id == plain.id })?.state,
+                reason == "Local port in use"
+            else { return false }
+            forwards.removeAll { $0.id == plain.id }
         }
-        await openMoved(port, on: alias, offset: offsets[alias]!)
+        let offset = ensureOffset(alias)
+        movedPorts[alias, default: []].insert(port)
+        appendLog(alias, "local port \(port) is taken: using \(port + offset)")
+        await openMoved(port, on: alias, offset: offset)
+        return true
+    }
+
+    /// The machine's offset, assigned when its first port moves: +10000 for
+    /// the first machine that needs one, +20000 for the next, and so on.
+    func ensureOffset(_ alias: String) -> Int {
+        if let existing = offsets[alias] { return existing }
+        let offset = nextOffset()
+        offsets[alias] = offset
+        appendLog(alias, "moved ports on this machine use +\(offset)")
+        return offset
     }
 
     func openMoved(_ port: Int, on alias: String, offset: Int) async {
@@ -158,9 +172,11 @@ extension ForwardController {
         await open(moved)
     }
 
-    /// Forget a machine's offset; its next scan tries plain numbers again.
-    public func clearOffset(_ alias: String) {
+    /// Forget a machine's offset and moved ports; its next scan tries plain
+    /// numbers again.
+    public func forgetMoves(_ alias: String) {
         offsets[alias] = nil
+        movedPorts[alias] = nil
     }
 
     /// Something of ours already listens there, so do not even try the plain number.
@@ -222,15 +238,7 @@ extension ForwardController {
     /// machine's offset, assigning one if needed, like a discovered port.
     func movePinned(_ forward: Forward) async {
         let alias = forward.spec.machine
-        let offset: Int
-        if let existing = offsets[alias] {
-            offset = existing
-        } else {
-            offset = nextOffset()
-            offsets[alias] = offset
-            appendLog(alias, "local ports taken: using +\(offset) for this machine")
-            onOffsetAssigned?(alias, offset)
-        }
+        let offset = ensureOffset(alias)
         let moved = ForwardSpec(
             machine: alias, localPort: forward.spec.remotePort + offset, remoteHost: forward.spec.remoteHost,
             remotePort: forward.spec.remotePort)
@@ -243,5 +251,6 @@ extension ForwardController {
         appendLog(alias, "forward \(forward.spec.sshArgument) moved to local \(moved.localPort)")
         onForwardMoved?(forward.spec, moved)
         await open(forwards[index])
+        onPortsMoved?(alias, [forward.spec.remotePort], offset)
     }
 }

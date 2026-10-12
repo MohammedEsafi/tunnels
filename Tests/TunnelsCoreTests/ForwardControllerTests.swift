@@ -246,8 +246,8 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(runner.calls(containing: "exit").count, 1)
     }
 
-    func testClashingDiscoveredPortsMoveByOneOffsetPerMachine() async {
-        // box-a already holds 8080 and 7777 locally; box-b offers the same.
+    func testOnlyClashingDiscoveredPortsMoveAndEachMachineGetsItsOwnOffset() async {
+        // box-a already holds 8080 and 7777 locally; box-b offers the same plus 9999.
         let listeners = "LISTEN 0 1 127.0.0.1:7777 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8080 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:9999 0.0.0.0:*"
         let takenLocally: Set<String> = ["127.0.0.1:7777:localhost:7777", "127.0.0.1:8080:localhost:8080"]
         runner.script = { args in
@@ -257,43 +257,37 @@ final class ForwardControllerTests: XCTestCase {
             }
             return nil
         }
-        var assigned: [(String, Int)] = []
-        controller.onOffsetAssigned = { assigned.append(($0, $1)) }
+        var moved: [(String, Set<Int>, Int)] = []
+        controller.onPortsMoved = { moved.append(($0, $1, $2)) }
         controller.discoveryInterval = 3600
         controller.enableAutoHost("box-b")
-        await waitUntil { self.controller.forwards(on: "box-b").count >= 3 }
+        await waitUntil {
+            self.controller.forwards(on: "box-b").count >= 3 && self.controller.forwards(on: "box-b").allSatisfy { $0.state == .active }
+        }
 
         let rows = controller.forwards(on: "box-b").sorted { $0.spec.remotePort < $1.spec.remotePort }
-        // Every port on the machine moves, including 9999 which was free.
-        XCTAssertEqual(rows.map(\.spec.localPort), [17777, 18080, 19999])
+        // The two taken ports move; 9999 keeps its own number.
+        XCTAssertEqual(rows.map(\.spec.localPort), [17777, 18080, 9999])
         XCTAssertEqual(rows.map(\.spec.remotePort), [7777, 8080, 9999])
-        XCTAssertTrue(rows.allSatisfy { $0.state == .active })
         XCTAssertEqual(controller.offsets["box-b"], 10000)
-        XCTAssertEqual(assigned.count, 1)
+        XCTAssertEqual(controller.movedPorts["box-b"], [7777, 8080])
+        XCTAssertEqual(moved.count, 1)
+        XCTAssertEqual(moved.first?.1, [7777, 8080])
+        XCTAssertEqual(moved.first?.2, 10000)
 
-        // A second scan changes nothing.
+        // A second scan changes nothing and reports nothing.
         await controller.scan("box-b")
-        XCTAssertEqual(controller.forwards(on: "box-b").count, 3)
-        XCTAssertEqual(assigned.count, 1)
+        XCTAssertEqual(controller.forwards(on: "box-b").map(\.spec.localPort).sorted(), [9999, 17777, 18080])
+        XCTAssertEqual(moved.count, 1)
 
-        // Another clashing machine gets the next offset.
+        // Another machine with the same clashes gets the next offset for its moved ports only.
         controller.enableAutoHost("box-c")
-        let deadline2 = Date().addingTimeInterval(5)
-        while Date() < deadline2, controller.forwards(on: "box-c").count < 3 {
-            try? await Task.sleep(nanoseconds: 20_000_000)
+        await waitUntil {
+            self.controller.forwards(on: "box-c").count >= 3 && self.controller.forwards(on: "box-c").allSatisfy { $0.state == .active }
         }
         XCTAssertEqual(controller.offsets["box-c"], 20000)
+        // 9999 is taken by box-b's plain forward now, so on box-c all three move.
         XCTAssertEqual(controller.forwards(on: "box-c").map(\.spec.localPort).sorted(), [27777, 28080, 29999])
-
-        // A machine that started plain and clashes later moves everything it has.
-        controller.enableAutoHost("box-d")
-        let deadline3 = Date().addingTimeInterval(5)
-        while Date() < deadline3, controller.forwards(on: "box-d").count < 3 {
-            try? await Task.sleep(nanoseconds: 20_000_000)
-        }
-        XCTAssertEqual(controller.offsets["box-d"], 30000)
-        XCTAssertEqual(controller.forwards(on: "box-d").map(\.spec.localPort).sorted(), [37777, 38080, 39999])
-        XCTAssertEqual(assigned.count, 3)
     }
 
     func testPinnedForwardMovesWhenItsPortIsTaken() async {
@@ -346,7 +340,7 @@ final class ForwardControllerTests: XCTestCase {
         XCTAssertEqual(moves.last?.1, postgres)
     }
 
-    func testScanMovesPlainRowsOnceAMachineHasAnOffset() async {
+    func testScanPutsRowsOnTheOffsetExactlyWhenTheyAreInTheMovedSet() async {
         let listeners = "LISTEN 0 1 127.0.0.1:8080 0.0.0.0:*\nLISTEN 0 1 127.0.0.1:8081 0.0.0.0:*"
         runner.script = { args in
             if args.contains("--") { return ProcessResult(exitCode: 0, stdout: listeners) }
@@ -358,15 +352,23 @@ final class ForwardControllerTests: XCTestCase {
         await waitUntil { self.controller.forwards(on: "box-a").count >= 2 }
         XCTAssertEqual(controller.forwards(on: "box-a").map(\.spec.localPort).sorted(), [8080, 8081])
 
-        // Later the machine is given an offset (as a restart from file would).
+        // A restart from file says 8081 had moved: only that one lands on the offset.
         await controller.disableAutoHost("box-a")
-        controller.enableAutoHost("box-a", offset: 10000)
-        let deadline2 = Date().addingTimeInterval(5)
-        while Date() < deadline2, controller.forwards(on: "box-a").count < 2 {
-            try? await Task.sleep(nanoseconds: 20_000_000)
+        let plainAttemptsBefore = runner.calls(containing: "forward").filter { $0.arguments.contains("127.0.0.1:8081:localhost:8081") }
+            .count
+        controller.enableAutoHost("box-a", offset: 10000, moved: [8081])
+        await waitUntil {
+            self.controller.forwards(on: "box-a").count >= 2 && self.controller.forwards(on: "box-a").allSatisfy { $0.state == .active }
         }
-        XCTAssertEqual(controller.forwards(on: "box-a").map(\.spec.localPort).sorted(), [18080, 18081])
-        XCTAssertTrue(controller.forwards(on: "box-a").allSatisfy { $0.state == .active })
+        XCTAssertEqual(controller.forwards(on: "box-a").map(\.spec.localPort).sorted(), [8080, 18081])
+        let plainAttemptsAfter = runner.calls(containing: "forward").filter { $0.arguments.contains("127.0.0.1:8081:localhost:8081") }.count
+        XCTAssertEqual(plainAttemptsAfter, plainAttemptsBefore, "a remembered move never tries the plain number")
+
+        // Forgetting the moves puts 8081 back on its own number at the next scan.
+        controller.forgetMoves("box-a")
+        await controller.scan("box-a")
+        XCTAssertEqual(controller.forwards(on: "box-a").map(\.spec.localPort).sorted(), [8080, 8081])
+        XCTAssertTrue(runner.calls(containing: "cancel").contains { $0.arguments.contains("127.0.0.1:18081:localhost:8081") })
     }
 
     func testAllPortsRemoveEachThenDisableAndEnableAgain() async {

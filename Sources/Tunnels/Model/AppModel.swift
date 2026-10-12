@@ -94,15 +94,15 @@ final class AppModel {
             guard self?.notifyOnGiveUp ?? true else { return }
             Notifier.post(title: "\(alias) is down", body: "\(reason). Open Tunnels to retry.")
         }
-        controller.onOffsetAssigned = { [weak self] alias, offset in
+        controller.onPortsMoved = { [weak self] alias, ports, offset in
             guard let self else { return }
             editFavourites("setOffset") { try Favourites.setOffset(offset, forHost: alias, in: self.favouritesURL) }
+            editFavourites("setMoved") {
+                try Favourites.setMoved(self.controller.movedPorts[alias] ?? [], forHost: alias, in: self.favouritesURL)
+            }
             reloadFavourites()
             guard notifyOnGiveUp else { return }
-            Notifier.post(
-                title: "\(alias) ports moved",
-                body: "Some ports were taken, so \(alias) uses +\(offset). For example \(8080 + offset) is its 8080."
-            )
+            Notifier.post(title: "\(alias) ports moved", body: Self.describeMoves(ports, offset: offset))
         }
         controller.onForwardMoved = { [weak self] old, new in
             guard let self else { return }
