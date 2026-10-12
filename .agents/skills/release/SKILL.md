@@ -29,7 +29,9 @@ page; not a release).
 4. `.github/workflows/release.yml` then checks out the tag, builds with
    warnings as errors, runs the tests, bundles, zips with `ditto` (keeps the
    signature), and creates a GitHub Release named after the tag with the zip
-   attached and notes generated from the commits since the previous tag.
+   attached. The release notes are the `## [X.Y.Z]` section of
+   `CHANGELOG.md`, verbatim; the workflow stops before publishing if that
+   section is missing, so step 2 is not optional.
 5. Check the Releases page. The bundle's version string is the tag without
    the `v`, from `git describe` in `scripts/bundle.sh`.
 
