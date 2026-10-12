@@ -6,6 +6,8 @@ date. Versions follow [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-10-12
+
 ### Fixed
 - All-ports mode on a macOS machine found no ports: the listing stopped at
   `netstat -tln`, which a Mac accepts but answers with established
