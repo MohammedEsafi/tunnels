@@ -2,11 +2,12 @@ import Foundation
 
 /// Finds TCP listeners on a machine, for all-ports mode.
 public enum PortDiscovery {
-    /// `ss` on modern Linux, `netstat` where it exists, and the kernel's own
-    /// /proc/net/tcp tables when neither tool is installed (containers).
-    /// macOS remotes answer through `netstat -an`.
+    /// `ss` on modern Linux, the kernel's own /proc/net/tcp tables when it is
+    /// not installed (containers), and `netstat -an` everywhere else, macOS
+    /// included. Not `netstat -tln`: a Mac accepts those flags but prints only
+    /// established connections, exits 0, and the chain would stop there.
     public static let command =
-        "ss -ltnH 2>/dev/null || netstat -tln 2>/dev/null || cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || netstat -an 2>/dev/null"
+        "ss -ltnH 2>/dev/null || cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || netstat -an 2>/dev/null"
 
     /// Ports a service would be deliberately started on: 1024 up to the start
     /// of Linux's ephemeral range (32768), minus sshd's own. Loopback and

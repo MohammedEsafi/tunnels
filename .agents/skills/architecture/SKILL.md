@@ -61,7 +61,7 @@ ssh -N -M -S <socket> -o ControlPersist=no -o BatchMode=yes \
 Add:     ssh -S <socket> -O forward -L 127.0.0.1:<local>:<remoteHost>:<remotePort> <alias>
 Cancel:  ssh -S <socket> -O cancel  -L 127.0.0.1:<local>:<remoteHost>:<remotePort> <alias>
 Health:  ssh -S <socket> -O check <alias>, every 30 s
-Listing: ssh -S <socket> <alias> -- "ss -ltnH || netstat -tln || cat /proc/net/tcp /proc/net/tcp6 || netstat -an"
+Listing: ssh -S <socket> <alias> -- "ss -ltnH || cat /proc/net/tcp /proc/net/tcp6 || netstat -an"
 ```
 
 Machine states: `disconnected → connecting → connected`,
